@@ -33,7 +33,7 @@
             <h1 class="text-lg font-bold flex items-center gap-2">
                 <i data-lucide="package-search"></i> Inventario Pro
             </h1>
-            <p class="text-[10px] text-green-200 opacity-90">Alta Definición activada</p>
+            <p class="text-[10px] text-green-200 opacity-90">Gestión Total</p>
         </div>
         <button onclick="app.showConfig()" class="p-2 hover:bg-green-800 rounded-full transition">
             <i data-lucide="settings" class="w-5 h-5"></i>
@@ -88,17 +88,33 @@
         <!-- PANTALLA 2: PRODUCTO EXISTENTE -->
         <div id="view-existing" class="hidden slide-up max-w-md mx-auto mt-4">
             <div class="bg-white rounded-xl shadow-lg overflow-hidden border-t-4 border-blue-500">
-                <div class="bg-blue-50 p-3 border-b border-blue-100 flex items-center justify-center gap-2">
-                    <i data-lucide="check-circle" class="text-blue-600 w-5 h-5"></i>
-                    <span class="font-bold text-blue-900 text-sm">Producto Registrado</span>
+                <div class="bg-blue-50 p-3 border-b border-blue-100 flex items-center justify-between px-4">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="check-circle" class="text-blue-600 w-5 h-5"></i>
+                        <span class="font-bold text-blue-900 text-sm">Registrado</span>
+                    </div>
+                    <!-- Botones de Gestión -->
+                    <div class="flex gap-2">
+                        <button onclick="app.editProduct()" class="p-1.5 bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200" title="Editar">
+                            <i data-lucide="edit-3" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="app.deleteProduct()" class="p-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200" title="Eliminar">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="p-6 text-center">
                     <div class="mb-6 flex flex-col items-center">
-                        <div class="w-64 h-64 bg-gray-200 rounded-lg overflow-hidden shadow-sm mb-3 relative">
-                            <!-- Imagen remota con fallback -->
-                            <img id="exist-img" src="" class="w-full h-full object-cover hidden" onerror="this.style.display='none'; document.getElementById('exist-fallback').style.display='flex';">
-                            <div id="exist-fallback" class="w-full h-full flex items-center justify-center text-gray-400 absolute inset-0 bg-gray-100"><i data-lucide="image" class="w-16 h-16"></i></div>
+                        <div class="w-64 h-64 bg-gray-200 rounded-lg overflow-hidden shadow-sm mb-3 relative group">
+                            <!-- Imagen remota con fix -->
+                            <img id="exist-img" src="" class="w-full h-full object-cover hidden transition-opacity duration-300">
+                            
+                            <!-- Fallback -->
+                            <div id="exist-fallback" class="w-full h-full flex flex-col items-center justify-center text-gray-400 absolute inset-0 bg-gray-100">
+                                <i data-lucide="image" class="w-16 h-16 mb-2 opacity-50"></i>
+                                <span class="text-xs">Sin imagen</span>
+                            </div>
                         </div>
                         <h3 id="exist-name" class="font-bold text-gray-800 text-xl leading-tight mb-1">Nombre Producto</h3>
                         <p class="text-gray-500 text-sm mb-2 font-mono" id="exist-sku-display">SKU: ---</p>
@@ -110,11 +126,11 @@
                         </div>
                     </div>
 
-                    <p class="text-gray-800 font-bold mb-4 text-lg">¿Agregar 1 pieza más?</p>
+                    <p class="text-gray-800 font-bold mb-4 text-lg">Acciones Rápidas</p>
 
                     <div class="grid grid-cols-1 gap-3">
                         <button onclick="app.quickAddOne()" id="btn-add-one" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 active:scale-95">
-                            <i data-lucide="plus-circle" class="w-6 h-6"></i> Sí, Agregar +1
+                            <i data-lucide="plus-circle" class="w-6 h-6"></i> Agregar +1
                         </button>
                         <button onclick="app.resetToSearch()" class="w-full bg-white border-2 border-gray-200 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-100 transition flex items-center justify-center gap-2">
                             <i data-lucide="arrow-left" class="w-5 h-5"></i> Volver
@@ -124,13 +140,13 @@
             </div>
         </div>
 
-        <!-- PANTALLA 3: PRODUCTO NUEVO -->
+        <!-- PANTALLA 3: PRODUCTO NUEVO / EDITAR -->
         <div id="view-new" class="hidden slide-up max-w-md mx-auto mt-4">
             <div class="bg-white rounded-xl shadow-lg border-t-4 border-green-500 p-5">
                 <div class="flex justify-between items-start mb-4">
                     <div>
-                        <h2 class="font-bold text-green-900 text-lg">Nuevo Producto</h2>
-                        <p class="text-xs text-green-700">SKU <span id="new-sku-display" class="font-mono font-bold bg-green-100 px-1 rounded">---</span> disponible.</p>
+                        <h2 id="form-title" class="font-bold text-green-900 text-lg">Nuevo Producto</h2>
+                        <p class="text-xs text-green-700">SKU <span id="new-sku-display" class="font-mono font-bold bg-green-100 px-1 rounded">---</span></p>
                     </div>
                     <button onclick="app.resetToSearch()" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
                 </div>
@@ -153,7 +169,7 @@
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="text-xs font-bold text-gray-500">Stock Inicial</label>
+                            <label id="lbl-stock" class="text-xs font-bold text-gray-500">Stock Inicial</label>
                             <input type="number" id="new-stock" value="1" class="w-full p-3 border rounded-lg text-center font-bold focus:ring-2 focus:ring-green-500 outline-none">
                         </div>
                         <div>
@@ -162,8 +178,11 @@
                         </div>
                     </div>
 
-                    <button onclick="app.submitNew()" id="btn-create" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold shadow hover:bg-green-700 transition flex justify-center items-center gap-2">
-                        <i data-lucide="save" class="w-4 h-4"></i> Registrar Producto
+                    <!-- Modo Edición flag -->
+                    <input type="hidden" id="is-edit-mode" value="false">
+
+                    <button onclick="app.submitProductForm()" id="btn-create" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold shadow hover:bg-green-700 transition flex justify-center items-center gap-2">
+                        <i data-lucide="save" class="w-4 h-4"></i> Guardar
                     </button>
                 </div>
             </div>
@@ -212,6 +231,36 @@
                 else this.loadGlobalInventory(); 
             },
 
+            // --- AYUDANTE DE IMAGENES (SOLUCIÓN A FOTOS ROTAS) ---
+            getEmbedLink(link) {
+                if (!link) return null;
+                // Si ya es un blob o base64, devolverlo tal cual
+                if (link.startsWith('data:') || link.startsWith('blob:')) return link;
+                
+                // Extraer ID de archivo de Drive
+                let id = null;
+                const patterns = [
+                    /id=([a-zA-Z0-9_-]{25,})/,
+                    /\/d\/([a-zA-Z0-9_-]{25,})\//,
+                    /open\?id=([a-zA-Z0-9_-]{25,})/
+                ];
+                
+                for (let p of patterns) {
+                    const match = link.match(p);
+                    if (match && match[1]) {
+                        id = match[1];
+                        break;
+                    }
+                }
+                
+                if (id) {
+                    // Usar el link de thumbnail de Google que es mucho más rápido y seguro para <img> tags
+                    return `https://drive.google.com/thumbnail?id=${id}&sz=w800`; // sz=w800 pide ancho 800px
+                }
+                
+                return link; // Si no es de drive, devolver original
+            },
+
             async loadGlobalInventory() {
                 const listContainer = document.getElementById('inventory-list');
                 const loader = document.getElementById('inventory-loader');
@@ -241,10 +290,8 @@
                     listContainer.innerHTML = `
                         <div class="text-center p-6 bg-red-50 rounded-lg border border-red-100">
                             <i data-lucide="wifi-off" class="w-8 h-8 text-red-400 mx-auto mb-2"></i>
-                            <p class="text-sm text-red-600 font-bold">No se pudo conectar</p>
-                            <button onclick="app.showConfig()" class="text-xs bg-white border border-red-200 text-red-600 px-3 py-2 rounded shadow-sm hover:bg-red-50 mt-2">
-                                Revisar URL
-                            </button>
+                            <p class="text-sm text-red-600 font-bold">Sin conexión</p>
+                            <button onclick="app.showConfig()" class="text-xs text-red-500 underline mt-2">Revisar URL</button>
                         </div>
                     `;
                     lucide.createIcons();
@@ -256,7 +303,7 @@
                 list.innerHTML = ''; 
 
                 if (products.length === 0) {
-                    list.innerHTML = '<div class="text-center text-gray-400 text-xs py-4">La hoja está vacía</div>';
+                    list.innerHTML = '<div class="text-center text-gray-400 text-xs py-4">Inventario vacío</div>';
                     return;
                 }
 
@@ -268,10 +315,12 @@
                         this.checkSku();
                     };
                     
-                    // Lógica segura para imágenes
+                    // Usar helper de imagen
+                    const safeImg = this.getEmbedLink(p.image);
                     let imgHtml = `<div class="w-full h-full flex items-center justify-center text-gray-300 bg-gray-100"><i data-lucide="image" class="w-4 h-4"></i></div>`;
-                    if (p.image && p.image.startsWith('http')) {
-                         imgHtml = `<img src="${p.image}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\\'w-full h-full flex items-center justify-center text-gray-300 bg-gray-100\\'><i data-lucide=\\'image-off\\' class=\\'w-4 h-4\\'></i></div>'; lucide.createIcons();">`;
+                    
+                    if (safeImg) {
+                         imgHtml = `<img src="${safeImg}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\\'w-full h-full flex items-center justify-center text-gray-300 bg-gray-100\\'><i data-lucide=\\'image-off\\' class=\\'w-4 h-4\\'></i></div>'; lucide.createIcons();">`;
                     }
 
                     div.innerHTML = `
@@ -326,6 +375,7 @@
                 document.getElementById('new-name').value = '';
                 document.getElementById('new-price').value = '';
                 document.getElementById('new-stock').value = '1';
+                document.getElementById('is-edit-mode').value = 'false';
                 this.updatePhotoUI();
                 this.showView('view-search');
                 this.loadGlobalInventory(); 
@@ -355,7 +405,7 @@
                         this.state.existingData = json.data; 
                         this.renderExisting(json.data);
                     } else {
-                        this.renderNew();
+                        this.renderNew(); // Modo Nuevo
                     }
                 } catch (e) {
                     console.warn(e);
@@ -375,25 +425,86 @@
                 const img = document.getElementById('exist-img');
                 const fallback = document.getElementById('exist-fallback');
                 
-                // Mostrar imagen solo si la URL es válida
-                if (data.image && data.image.startsWith('http')) {
-                    img.src = data.image;
-                    img.style.display = 'block'; // Asegurar visible
+                // Usar helper de imagen
+                const safeImg = this.getEmbedLink(data.image);
+
+                if (safeImg) {
+                    img.src = safeImg;
+                    img.style.display = 'block';
+                    img.classList.remove('hidden');
                     fallback.style.display = 'none';
                 } else {
                     img.style.display = 'none';
+                    img.classList.add('hidden');
                     fallback.style.display = 'flex';
                 }
                 this.showView('view-existing');
             },
 
+            // --- MODO NUEVO / EDITAR ---
             renderNew() {
+                // Modo registro nuevo normal
+                document.getElementById('form-title').innerText = "Nuevo Producto";
                 document.getElementById('new-sku-display').textContent = this.state.currentSku;
+                document.getElementById('lbl-stock').innerText = "Stock Inicial";
+                document.getElementById('is-edit-mode').value = 'false';
+                
+                // Limpiar campos
+                document.getElementById('new-name').value = '';
+                document.getElementById('new-price').value = '';
+                document.getElementById('new-stock').value = '1';
+                this.clearPhoto();
+                
                 this.showView('view-new');
+            },
+
+            editProduct() {
+                const data = this.state.existingData;
+                if(!data) return;
+
+                // Preparar modo edición
+                document.getElementById('form-title').innerText = "Editar Producto";
+                document.getElementById('new-sku-display').textContent = data.sku;
+                document.getElementById('lbl-stock').innerText = "Stock Total (Sobrescribir)";
+                document.getElementById('is-edit-mode').value = 'true';
+
+                // Rellenar datos
+                document.getElementById('new-name').value = data.name;
+                document.getElementById('new-price').value = data.price;
+                document.getElementById('new-stock').value = data.stock;
+                
+                // Foto actual
+                const safeImg = this.getEmbedLink(data.image);
+                if(safeImg) {
+                   this.state.currentPhoto = safeImg; // Usamos el link como "foto actual"
+                   document.getElementById('new-photo-preview').src = safeImg;
+                   document.getElementById('new-photo-preview-container').classList.remove('hidden');
+                   document.getElementById('btn-take-photo').classList.add('hidden');
+                } else {
+                   this.clearPhoto();
+                }
+
+                this.showView('view-new');
+            },
+
+            // --- ELIMINAR ---
+            async deleteProduct() {
+                const sku = this.state.existingData.sku;
+                const name = this.state.existingData.name;
+                
+                // Doble confirmación (Simple y segura)
+                if(confirm(`¿Estás seguro de ELIMINAR "${name}"?\nEsta acción no se puede deshacer.`)) {
+                    if(confirm(`CONFIRMACIÓN FINAL:\n¿Borrar definitivamente el producto SKU: ${sku}?`)) {
+                        
+                        const payload = { action: 'delete', sku: sku };
+                        await this.sendData(payload, 'Producto eliminado');
+                    }
+                }
             },
 
             async quickAddOne() {
                 const payload = {
+                    action: 'add', // Acción implícita anterior
                     sku: this.state.currentSku,
                     stock: 1, 
                     price: this.state.existingData.price,
@@ -403,35 +514,48 @@
                 await this.sendData(payload, `Stock +1`, 'btn-add-one');
             },
 
-            async submitNew() {
+            async submitProductForm() {
                 const name = document.getElementById('new-name').value.trim();
                 const price = document.getElementById('new-price').value;
                 const stock = document.getElementById('new-stock').value;
+                const isEdit = document.getElementById('is-edit-mode').value === 'true';
 
                 if (!name || !price) return this.notify('Faltan datos', 'error');
 
+                // Si estamos editando y la foto es una URL (no base64), no enviamos nada para mantener la anterior
+                let imageToSend = this.state.currentPhoto;
+                if (imageToSend && !imageToSend.startsWith('data:')) {
+                    imageToSend = null; // No enviar URL como base64
+                }
+
                 const payload = {
+                    action: isEdit ? 'update' : 'create', // Flag para el backend
                     sku: this.state.currentSku,
                     name: name,
                     price: price,
                     stock: stock,
-                    imageBase64: this.state.currentPhoto
+                    imageBase64: imageToSend
                 };
-                await this.sendData(payload, 'Registrado', 'btn-create');
+                
+                await this.sendData(payload, isEdit ? 'Actualizado' : 'Registrado', 'btn-create');
             },
 
             async sendData(payload, successMessage, btnId) {
                 const btn = document.getElementById(btnId);
                 const originalHTML = btn ? btn.innerHTML : '';
-                if(btn) { btn.disabled = true; btn.innerText = 'Guardando...'; }
+                if(btn) { btn.disabled = true; btn.innerText = 'Procesando...'; }
 
                 try {
+                    // Usar mode: 'no-cors' tiene limitaciones (no lee respuesta), pero es necesario para forms simples a Google Script
+                    // Para DELETE y UPDATE complejos, idealmente el script debe devolver JSONP o usar proxy, 
+                    // pero con 'no-cors' asumimos éxito si no hay error de red.
                     await fetch(this.state.url, {
                         method: 'POST',
                         mode: 'no-cors', 
                         headers: { 'Content-Type': 'text/plain' },
                         body: JSON.stringify(payload)
                     });
+                    
                     this.notify(successMessage, 'success');
                     this.resetToSearch(); 
                 } catch (e) {
@@ -468,14 +592,7 @@
                     video.classList.remove('hidden');
                     controls.classList.remove('hidden');
                     try {
-                        // SOLICITUD DE ALTA CALIDAD (4K preferencia, fallback 1080p)
-                        const constraints = { 
-                            video: { 
-                                facingMode: 'environment', 
-                                width: { ideal: 4096 }, 
-                                height: { ideal: 2160 } 
-                            } 
-                        };
+                        const constraints = { video: { facingMode: 'environment', width: { ideal: 4096 }, height: { ideal: 2160 } } };
                         const stream = await navigator.mediaDevices.getUserMedia(constraints);
                         this.state.stream = stream;
                         video.srcObject = stream;
@@ -493,21 +610,16 @@
                 const video = document.getElementById('camera-video');
                 const canvas = document.getElementById('photo-canvas');
                 
-                // Verificar que el video tenga dimensiones antes de capturar
                 if (video.videoWidth > 0 && video.videoHeight > 0) {
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    
-                    // CALIDAD ALTA (1.0 = 100%)
                     this.state.currentPhoto = canvas.toDataURL('image/jpeg', 1.0);
-                    
                     this.stopCamera();
                     this.updatePhotoUI();
                 } else {
-                    // Reintentar en 500ms si el video aún no carga
-                    this.notify("Cargando cámara... espera", "error");
+                    this.notify("Cargando cámara...", "error");
                     setTimeout(() => this.capturePhoto(), 500);
                 }
             },
