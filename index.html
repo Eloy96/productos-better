@@ -393,9 +393,17 @@
                     scannerOverlay.classList.add('hidden');
 
                     try {
-                        const stream = await navigator.mediaDevices.getUserMedia({ 
-                            video: { facingMode: 'environment' } 
-                        });
+                        // SOLUCIÓN BORROSO: Pedimos una resolución HD o Full HD explícitamente
+                        // 'ideal' intenta obtener esa resolución, si no puede, usa la mejor disponible.
+                        const constraints = { 
+                            video: { 
+                                facingMode: 'environment',
+                                width: { ideal: 1920 },
+                                height: { ideal: 1080 } 
+                            } 
+                        };
+                        
+                        const stream = await navigator.mediaDevices.getUserMedia(constraints);
                         this.data.stream = stream;
                         video.srcObject = stream;
                     } catch (err) {
@@ -429,13 +437,14 @@
                 const canvas = document.getElementById('photo-canvas');
                 
                 if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    // Usamos la resolución real del video (que ahora será HD gracias al cambio anterior)
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                     
-                    // Compress to 0.7 quality jpeg
-                    this.data.currentImageBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                    // Compress to 0.9 quality jpeg (Mejor calidad, antes era 0.7)
+                    this.data.currentImageBase64 = canvas.toDataURL('image/jpeg', 0.9);
                     
                     this.stopCamera();
                     this.updatePhotoUI();
