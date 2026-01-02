@@ -33,7 +33,7 @@
             <h1 class="text-lg font-bold flex items-center gap-2">
                 <i data-lucide="package-search"></i> Inventario Pro
             </h1>
-            <p class="text-[10px] text-green-200 opacity-90">Sincronizado con Google Sheets</p>
+            <p class="text-[10px] text-green-200 opacity-90">Alta Definición activada</p>
         </div>
         <button onclick="app.showConfig()" class="p-2 hover:bg-green-800 rounded-full transition">
             <i data-lucide="settings" class="w-5 h-5"></i>
@@ -95,9 +95,10 @@
                 
                 <div class="p-6 text-center">
                     <div class="mb-6 flex flex-col items-center">
-                        <div class="w-32 h-32 bg-gray-200 rounded-lg overflow-hidden shadow-sm mb-3">
-                            <img id="exist-img" src="" class="w-full h-full object-cover hidden">
-                            <div id="exist-no-img" class="w-full h-full flex items-center justify-center text-gray-400"><i data-lucide="image" class="w-12 h-12"></i></div>
+                        <div class="w-64 h-64 bg-gray-200 rounded-lg overflow-hidden shadow-sm mb-3 relative">
+                            <!-- Imagen remota con fallback -->
+                            <img id="exist-img" src="" class="w-full h-full object-cover hidden" onerror="this.style.display='none'; document.getElementById('exist-fallback').style.display='flex';">
+                            <div id="exist-fallback" class="w-full h-full flex items-center justify-center text-gray-400 absolute inset-0 bg-gray-100"><i data-lucide="image" class="w-16 h-16"></i></div>
                         </div>
                         <h3 id="exist-name" class="font-bold text-gray-800 text-xl leading-tight mb-1">Nombre Producto</h3>
                         <p class="text-gray-500 text-sm mb-2 font-mono" id="exist-sku-display">SKU: ---</p>
@@ -137,27 +138,27 @@
                 <div class="space-y-4">
                     <div class="flex flex-col items-center justify-center">
                         <div id="new-photo-preview-container" class="hidden relative w-full group">
-                            <img id="new-photo-preview" src="" class="w-full h-40 object-cover rounded-lg shadow-sm border">
-                            <button onclick="app.clearPhoto()" class="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1.5 shadow-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            <img id="new-photo-preview" src="" class="w-full h-64 object-cover rounded-lg shadow-sm border">
+                            <button onclick="app.clearPhoto()" class="absolute top-2 right-2 bg-red-600 text-white rounded-full p-2 shadow-lg"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                         </div>
-                        <button id="btn-take-photo" onclick="app.startCamera('photo')" class="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-green-500 hover:text-green-500 bg-gray-50 transition">
-                            <i data-lucide="camera" class="w-8 h-8 mb-1"></i>
-                            <span class="text-xs font-bold">TOMAR FOTO</span>
+                        <button id="btn-take-photo" onclick="app.startCamera('photo')" class="w-full h-40 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-green-500 hover:text-green-500 bg-gray-50 transition">
+                            <i data-lucide="camera" class="w-10 h-10 mb-2"></i>
+                            <span class="text-sm font-bold">TOMAR FOTO HD</span>
                         </button>
                     </div>
 
                     <div>
                         <label class="text-xs font-bold text-gray-500">Nombre</label>
-                        <input id="new-name" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none" placeholder="Ej. Lámpara">
+                        <input id="new-name" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none" placeholder="Ej. Lámpara">
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="text-xs font-bold text-gray-500">Stock Inicial</label>
-                            <input type="number" id="new-stock" value="1" class="w-full p-2 border rounded-lg text-center font-bold focus:ring-2 focus:ring-green-500 outline-none">
+                            <input type="number" id="new-stock" value="1" class="w-full p-3 border rounded-lg text-center font-bold focus:ring-2 focus:ring-green-500 outline-none">
                         </div>
                         <div>
                             <label class="text-xs font-bold text-gray-500">Precio ($)</label>
-                            <input type="number" id="new-price" placeholder="0.00" class="w-full p-2 border rounded-lg text-center focus:ring-2 focus:ring-green-500 outline-none">
+                            <input type="number" id="new-price" placeholder="0.00" class="w-full p-3 border rounded-lg text-center focus:ring-2 focus:ring-green-500 outline-none">
                         </div>
                     </div>
 
@@ -187,7 +188,7 @@
             <button onclick="app.stopCamera()" class="absolute top-4 right-4 bg-white/20 text-white p-2 rounded-full backdrop-blur z-50"><i data-lucide="x"></i></button>
         </div>
         <div id="photo-controls" class="h-24 bg-black flex items-center justify-center shrink-0">
-            <button onclick="app.capturePhoto()" class="w-16 h-16 bg-white rounded-full border-4 border-gray-400"></button>
+            <button onclick="app.capturePhoto()" class="w-16 h-16 bg-white rounded-full border-4 border-gray-400 hover:scale-105 transition"></button>
         </div>
     </div>
 
@@ -208,19 +209,16 @@
             init() {
                 lucide.createIcons();
                 if (!this.state.url) this.showConfig();
-                else this.loadGlobalInventory(); // Carga automática al iniciar
+                else this.loadGlobalInventory(); 
             },
 
-            // --- CARGA DE INVENTARIO (NUEVO) ---
             async loadGlobalInventory() {
                 const listContainer = document.getElementById('inventory-list');
                 const loader = document.getElementById('inventory-loader');
                 
-                // Mostrar loader solo si la lista está vacía
                 if(listContainer.children.length === 0) loader.classList.remove('hidden');
 
                 try {
-                    // Fetch con manejo de redirecciones para Google Apps Script
                     const response = await fetch(`${this.state.url}?action=getAll`, {
                         method: 'GET',
                         redirect: 'follow'
@@ -237,16 +235,14 @@
                         throw new Error("API devolvió error");
                     }
                 } catch (e) {
-                    console.warn("Fallo al conectar:", e.message); // Warning en lugar de Error para no alarmar
+                    console.warn("Fallo al conectar:", e.message);
                     loader.classList.add('hidden');
                     
-                    // Mostrar UI amigable en lugar de dejarlo en blanco o error de consola
                     listContainer.innerHTML = `
                         <div class="text-center p-6 bg-red-50 rounded-lg border border-red-100">
                             <i data-lucide="wifi-off" class="w-8 h-8 text-red-400 mx-auto mb-2"></i>
                             <p class="text-sm text-red-600 font-bold">No se pudo conectar</p>
-                            <p class="text-xs text-red-500 mt-1 mb-3">Verifica que tu script tenga permisos "Cualquier persona" (Anyone).</p>
-                            <button onclick="app.showConfig()" class="text-xs bg-white border border-red-200 text-red-600 px-3 py-2 rounded shadow-sm hover:bg-red-50">
+                            <button onclick="app.showConfig()" class="text-xs bg-white border border-red-200 text-red-600 px-3 py-2 rounded shadow-sm hover:bg-red-50 mt-2">
                                 Revisar URL
                             </button>
                         </div>
@@ -267,17 +263,19 @@
                 products.forEach(p => {
                     const div = document.createElement('div');
                     div.className = "bg-white p-3 rounded-lg border border-gray-100 flex gap-3 items-center shadow-sm hover:shadow-md transition active:scale-[0.98]";
-                    div.onclick = () => { // Al hacer clic, selecciona el producto
+                    div.onclick = () => {
                         document.getElementById('search-sku').value = p.sku;
                         this.checkSku();
                     };
                     
-                    const imgHtml = p.image && p.image.startsWith('http') 
-                        ? `<img src="${p.image}" class="w-full h-full object-cover">`
-                        : `<div class="w-full h-full flex items-center justify-center text-gray-300 bg-gray-100"><i data-lucide="image" class="w-4 h-4"></i></div>`;
+                    // Lógica segura para imágenes
+                    let imgHtml = `<div class="w-full h-full flex items-center justify-center text-gray-300 bg-gray-100"><i data-lucide="image" class="w-4 h-4"></i></div>`;
+                    if (p.image && p.image.startsWith('http')) {
+                         imgHtml = `<img src="${p.image}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\\'w-full h-full flex items-center justify-center text-gray-300 bg-gray-100\\'><i data-lucide=\\'image-off\\' class=\\'w-4 h-4\\'></i></div>'; lucide.createIcons();">`;
+                    }
 
                     div.innerHTML = `
-                        <div class="w-12 h-12 rounded-md overflow-hidden shrink-0 border border-gray-200">
+                        <div class="w-12 h-12 rounded-md overflow-hidden shrink-0 border border-gray-200 relative">
                             ${imgHtml}
                         </div>
                         <div class="flex-1 min-w-0">
@@ -297,7 +295,6 @@
                 lucide.createIcons();
             },
 
-            // --- NAVEGACIÓN ---
             showView(id) {
                 ['view-search', 'view-existing', 'view-new', 'view-config'].forEach(v => document.getElementById(v).classList.add('hidden'));
                 document.getElementById(id).classList.remove('hidden');
@@ -331,10 +328,9 @@
                 document.getElementById('new-stock').value = '1';
                 this.updatePhotoUI();
                 this.showView('view-search');
-                this.loadGlobalInventory(); // Recargar lista al volver
+                this.loadGlobalInventory(); 
             },
 
-            // --- LÓGICA PRINCIPAL ---
             async checkSku() {
                 const skuInput = document.getElementById('search-sku');
                 const sku = skuInput.value.trim().toUpperCase();
@@ -377,15 +373,16 @@
                 document.getElementById('exist-stock-current').textContent = data.stock;
                 
                 const img = document.getElementById('exist-img');
-                const noImg = document.getElementById('exist-no-img');
+                const fallback = document.getElementById('exist-fallback');
                 
+                // Mostrar imagen solo si la URL es válida
                 if (data.image && data.image.startsWith('http')) {
                     img.src = data.image;
-                    img.classList.remove('hidden');
-                    noImg.classList.add('hidden');
+                    img.style.display = 'block'; // Asegurar visible
+                    fallback.style.display = 'none';
                 } else {
-                    img.classList.add('hidden');
-                    noImg.classList.remove('hidden');
+                    img.style.display = 'none';
+                    fallback.style.display = 'flex';
                 }
                 this.showView('view-existing');
             },
@@ -395,7 +392,6 @@
                 this.showView('view-new');
             },
 
-            // --- ENVÍO ---
             async quickAddOne() {
                 const payload = {
                     sku: this.state.currentSku,
@@ -445,7 +441,6 @@
                 }
             },
 
-            // --- CÁMARA Y UTILIDADES ---
             async startCamera(mode) {
                 const modal = document.getElementById('camera-modal');
                 const video = document.getElementById('camera-video');
@@ -473,10 +468,18 @@
                     video.classList.remove('hidden');
                     controls.classList.remove('hidden');
                     try {
-                        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 } } });
+                        // SOLICITUD DE ALTA CALIDAD (4K preferencia, fallback 1080p)
+                        const constraints = { 
+                            video: { 
+                                facingMode: 'environment', 
+                                width: { ideal: 4096 }, 
+                                height: { ideal: 2160 } 
+                            } 
+                        };
+                        const stream = await navigator.mediaDevices.getUserMedia(constraints);
                         this.state.stream = stream;
                         video.srcObject = stream;
-                    } catch (e) { this.stopCamera(); }
+                    } catch (e) { this.stopCamera(); this.notify("Error al abrir cámara", "error"); }
                 }
             },
 
@@ -489,12 +492,24 @@
             capturePhoto() {
                 const video = document.getElementById('camera-video');
                 const canvas = document.getElementById('photo-canvas');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                canvas.getContext('2d').drawImage(video, 0, 0);
-                this.state.currentPhoto = canvas.toDataURL('image/jpeg', 0.8);
-                this.stopCamera();
-                this.updatePhotoUI();
+                
+                // Verificar que el video tenga dimensiones antes de capturar
+                if (video.videoWidth > 0 && video.videoHeight > 0) {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    // CALIDAD ALTA (1.0 = 100%)
+                    this.state.currentPhoto = canvas.toDataURL('image/jpeg', 1.0);
+                    
+                    this.stopCamera();
+                    this.updatePhotoUI();
+                } else {
+                    // Reintentar en 500ms si el video aún no carga
+                    this.notify("Cargando cámara... espera", "error");
+                    setTimeout(() => this.capturePhoto(), 500);
+                }
             },
 
             updatePhotoUI() {
