@@ -21,7 +21,6 @@
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         
-        /* Loading Spinner */
         .loader { border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #16a34a; width: 24px; height: 24px; -webkit-animation: spin 1s linear infinite; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
@@ -34,7 +33,7 @@
             <h1 class="text-lg font-bold flex items-center gap-2">
                 <i data-lucide="package-search"></i> Inventario Pro
             </h1>
-            <p class="text-[10px] text-green-200 opacity-90">Validación en tiempo real</p>
+            <p class="text-[10px] text-green-200 opacity-90">Sincronizado con Google Sheets</p>
         </div>
         <button onclick="app.showConfig()" class="p-2 hover:bg-green-800 rounded-full transition">
             <i data-lucide="settings" class="w-5 h-5"></i>
@@ -44,46 +43,57 @@
     <!-- Main Content -->
     <main id="app-container" class="flex-1 overflow-y-auto p-4 pb-24 relative">
         
-        <!-- PANTALLA 1: BÚSQUEDA (Inicio) -->
-        <div id="view-search" class="fade-in max-w-md mx-auto mt-4">
-            <div class="bg-white rounded-xl shadow-md p-6 text-center">
-                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600">
-                    <i data-lucide="scan-barcode" class="w-8 h-8"></i>
-                </div>
-                <h2 class="text-xl font-bold text-gray-800 mb-2">Escanear Producto</h2>
-                <p class="text-sm text-gray-500 mb-6">Escanea el código para registrar o actualizar stock.</p>
-
-                <div class="flex gap-2 mb-4">
-                    <input type="text" id="search-sku" placeholder="SKU / Código..." 
+        <!-- PANTALLA 1: BÚSQUEDA Y LISTA (Inicio) -->
+        <div id="view-search" class="fade-in max-w-md mx-auto mt-2">
+            
+            <!-- Buscador -->
+            <div class="bg-white rounded-xl shadow-md p-5 mb-6">
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="search-sku" placeholder="Escanear o Escribir SKU..." 
                            class="flex-1 p-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none text-lg font-mono text-center uppercase">
                     <button onclick="app.startCamera('scanner')" class="bg-gray-800 text-white px-4 rounded-lg hover:bg-black transition">
                         <i data-lucide="camera" class="w-6 h-6"></i>
                     </button>
                 </div>
-
-                <button onclick="app.checkSku()" id="btn-search" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold shadow-lg hover:bg-green-700 transition flex justify-center items-center gap-2">
-                    <span>Buscar SKU</span>
+                <button onclick="app.checkSku()" id="btn-search" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold shadow hover:bg-green-700 transition flex justify-center items-center gap-2">
+                    <span>Buscar / Registrar</span>
                     <i data-lucide="search" class="w-4 h-4"></i>
                 </button>
             </div>
 
-            <!-- Lista rápida de historial -->
-            <div id="history-container" class="mt-8">
-                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Movimientos Recientes</h3>
-                <div id="history-list" class="space-y-2"></div>
+            <!-- Lista Global -->
+            <div id="global-inventory-container">
+                <div class="flex justify-between items-center mb-3 ml-1">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                        <i data-lucide="globe" class="w-3 h-3"></i> Inventario en la Nube
+                    </h3>
+                    <button onclick="app.loadGlobalInventory()" class="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50 transition">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                
+                <!-- Loading State -->
+                <div id="inventory-loader" class="text-center py-8 hidden">
+                    <div class="loader mx-auto mb-2"></div>
+                    <p class="text-xs text-gray-400">Cargando productos...</p>
+                </div>
+
+                <!-- Lista -->
+                <div id="inventory-list" class="space-y-3 pb-6">
+                    <!-- Items inyectados por JS -->
+                </div>
             </div>
         </div>
 
-        <!-- PANTALLA 2: PRODUCTO EXISTENTE (Sumar Stock) -->
+        <!-- PANTALLA 2: PRODUCTO EXISTENTE -->
         <div id="view-existing" class="hidden slide-up max-w-md mx-auto mt-4">
             <div class="bg-white rounded-xl shadow-lg overflow-hidden border-t-4 border-blue-500">
                 <div class="bg-blue-50 p-3 border-b border-blue-100 flex items-center justify-center gap-2">
                     <i data-lucide="check-circle" class="text-blue-600 w-5 h-5"></i>
-                    <span class="font-bold text-blue-900 text-sm">Producto ya registrado</span>
+                    <span class="font-bold text-blue-900 text-sm">Producto Registrado</span>
                 </div>
                 
                 <div class="p-6 text-center">
-                    <!-- Foto y Detalles -->
                     <div class="mb-6 flex flex-col items-center">
                         <div class="w-32 h-32 bg-gray-200 rounded-lg overflow-hidden shadow-sm mb-3">
                             <img id="exist-img" src="" class="w-full h-full object-cover hidden">
@@ -95,62 +105,36 @@
                         <div class="flex gap-4 text-sm bg-gray-50 px-4 py-2 rounded-full border">
                             <span>Precio: <strong id="exist-price" class="text-gray-800">$0.00</strong></span>
                             <span class="text-gray-300">|</span>
-                            <span>Stock Actual: <strong id="exist-stock-current" class="text-blue-600">0</strong></span>
+                            <span>Stock: <strong id="exist-stock-current" class="text-blue-600">0</strong></span>
                         </div>
                     </div>
 
-                    <!-- Pregunta Principal -->
-                    <p class="text-gray-800 font-bold mb-4 text-lg">¿Deseas agregar 1 pieza más?</p>
+                    <p class="text-gray-800 font-bold mb-4 text-lg">¿Agregar 1 pieza más?</p>
 
-                    <!-- Acciones Principales -->
                     <div class="grid grid-cols-1 gap-3">
                         <button onclick="app.quickAddOne()" id="btn-add-one" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 active:scale-95">
-                            <i data-lucide="plus-circle" class="w-6 h-6"></i>
-                            Sí, Agregar +1
+                            <i data-lucide="plus-circle" class="w-6 h-6"></i> Sí, Agregar +1
                         </button>
-
                         <button onclick="app.resetToSearch()" class="w-full bg-white border-2 border-gray-200 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-100 transition flex items-center justify-center gap-2">
-                            <i data-lucide="scan-barcode" class="w-5 h-5"></i>
-                            Escanear otro producto
+                            <i data-lucide="arrow-left" class="w-5 h-5"></i> Volver
                         </button>
                     </div>
-
-                    <!-- Opción Manual Oculta -->
-                    <div class="mt-4">
-                        <button onclick="document.getElementById('manual-stock-input').classList.toggle('hidden')" class="text-xs text-blue-500 underline hover:text-blue-700">
-                            Ingresar cantidad diferente (Manual)
-                        </button>
-                    </div>
-                    
-                    <div id="manual-stock-input" class="hidden mt-3 bg-gray-50 p-3 rounded-lg border border-gray-200 fade-in">
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Cantidad a sumar</label>
-                        <div class="flex items-center justify-center gap-4 mb-3">
-                            <button onclick="app.adjustStock(-1)" class="w-10 h-10 bg-white border border-gray-300 rounded-full flex items-center justify-center font-bold text-gray-600">-</button>
-                            <input type="number" id="exist-add-qty" value="1" class="w-20 text-center font-bold text-xl bg-transparent focus:outline-none text-blue-600">
-                            <button onclick="app.adjustStock(1)" class="w-10 h-10 bg-white border border-gray-300 rounded-full flex items-center justify-center font-bold text-gray-600">+</button>
-                        </div>
-                        <button onclick="app.submitExisting()" id="btn-update-manual" class="w-full bg-blue-600 text-white py-2 rounded-lg font-bold text-sm">
-                            Confirmar Cantidad
-                        </button>
-                    </div>
-
                 </div>
             </div>
         </div>
 
-        <!-- PANTALLA 3: PRODUCTO NUEVO (Formulario Completo) -->
+        <!-- PANTALLA 3: PRODUCTO NUEVO -->
         <div id="view-new" class="hidden slide-up max-w-md mx-auto mt-4">
             <div class="bg-white rounded-xl shadow-lg border-t-4 border-green-500 p-5">
                 <div class="flex justify-between items-start mb-4">
                     <div>
                         <h2 class="font-bold text-green-900 text-lg">Nuevo Producto</h2>
-                        <p class="text-xs text-green-700">El SKU <span id="new-sku-display" class="font-mono font-bold bg-green-100 px-1 rounded">---</span> no existe.</p>
+                        <p class="text-xs text-green-700">SKU <span id="new-sku-display" class="font-mono font-bold bg-green-100 px-1 rounded">---</span> disponible.</p>
                     </div>
                     <button onclick="app.resetToSearch()" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
                 </div>
 
                 <div class="space-y-4">
-                    <!-- Foto -->
                     <div class="flex flex-col items-center justify-center">
                         <div id="new-photo-preview-container" class="hidden relative w-full group">
                             <img id="new-photo-preview" src="" class="w-full h-40 object-cover rounded-lg shadow-sm border">
@@ -162,12 +146,10 @@
                         </button>
                     </div>
 
-                    <!-- Campos -->
                     <div>
                         <label class="text-xs font-bold text-gray-500">Nombre</label>
                         <input id="new-name" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none" placeholder="Ej. Lámpara">
                     </div>
-                    
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="text-xs font-bold text-gray-500">Stock Inicial</label>
@@ -188,15 +170,13 @@
 
         <!-- PANTALLA: CONFIGURACIÓN -->
         <div id="view-config" class="hidden fade-in bg-gray-800 text-white p-6 rounded-xl shadow-2xl mt-10 max-w-md mx-auto">
-            <h2 class="text-xl font-bold mb-4 text-center">Conexión Google Sheets</h2>
-            <p class="text-xs text-gray-400 mb-2">URL del Web App (Debe soportar doGet y doPost):</p>
-            <input id="inp-script-url" class="w-full p-2 bg-gray-700 border border-gray-600 rounded text-xs text-green-300 font-mono mb-4" placeholder="https://script.google.com/...">
+            <h2 class="text-xl font-bold mb-4 text-center">Configuración</h2>
+            <input id="inp-script-url" class="w-full p-2 bg-gray-700 border border-gray-600 rounded text-xs text-green-300 font-mono mb-4" placeholder="URL Google Script...">
             <div class="flex gap-2">
                 <button onclick="app.resetToSearch()" class="flex-1 bg-gray-600 py-2 rounded">Cancelar</button>
                 <button onclick="app.saveConfig()" class="flex-1 bg-green-600 py-2 rounded font-bold">Guardar</button>
             </div>
         </div>
-
     </main>
 
     <!-- Modal Cámara -->
@@ -212,11 +192,7 @@
     </div>
 
     <!-- Notificación -->
-    <div id="notification" class="fixed top-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-50 text-white font-medium text-sm hidden transition-all duration-300 text-center w-max max-w-[90%]">
-        Mensaje
-    </div>
-
-    <!-- Canvas oculto -->
+    <div id="notification" class="fixed top-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-50 text-white font-medium text-sm hidden transition-all duration-300 text-center w-max max-w-[90%]">Mensaje</div>
     <canvas id="photo-canvas" class="hidden"></canvas>
 
     <script>
@@ -232,15 +208,98 @@
             init() {
                 lucide.createIcons();
                 if (!this.state.url) this.showConfig();
-                // Enfocar input al inicio
-                setTimeout(() => document.getElementById('search-sku').focus(), 500);
+                else this.loadGlobalInventory(); // Carga automática al iniciar
+            },
+
+            // --- CARGA DE INVENTARIO (NUEVO) ---
+            async loadGlobalInventory() {
+                const listContainer = document.getElementById('inventory-list');
+                const loader = document.getElementById('inventory-loader');
+                
+                // Mostrar loader solo si la lista está vacía
+                if(listContainer.children.length === 0) loader.classList.remove('hidden');
+
+                try {
+                    // Fetch con manejo de redirecciones para Google Apps Script
+                    const response = await fetch(`${this.state.url}?action=getAll`, {
+                        method: 'GET',
+                        redirect: 'follow'
+                    });
+
+                    if (!response.ok) throw new Error("Status " + response.status);
+
+                    const json = await response.json();
+                    loader.classList.add('hidden');
+                    
+                    if (json.status === 'success') {
+                        this.renderInventoryList(json.data);
+                    } else {
+                        throw new Error("API devolvió error");
+                    }
+                } catch (e) {
+                    console.warn("Fallo al conectar:", e.message); // Warning en lugar de Error para no alarmar
+                    loader.classList.add('hidden');
+                    
+                    // Mostrar UI amigable en lugar de dejarlo en blanco o error de consola
+                    listContainer.innerHTML = `
+                        <div class="text-center p-6 bg-red-50 rounded-lg border border-red-100">
+                            <i data-lucide="wifi-off" class="w-8 h-8 text-red-400 mx-auto mb-2"></i>
+                            <p class="text-sm text-red-600 font-bold">No se pudo conectar</p>
+                            <p class="text-xs text-red-500 mt-1 mb-3">Verifica que tu script tenga permisos "Cualquier persona" (Anyone).</p>
+                            <button onclick="app.showConfig()" class="text-xs bg-white border border-red-200 text-red-600 px-3 py-2 rounded shadow-sm hover:bg-red-50">
+                                Revisar URL
+                            </button>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                }
+            },
+
+            renderInventoryList(products) {
+                const list = document.getElementById('inventory-list');
+                list.innerHTML = ''; 
+
+                if (products.length === 0) {
+                    list.innerHTML = '<div class="text-center text-gray-400 text-xs py-4">La hoja está vacía</div>';
+                    return;
+                }
+
+                products.forEach(p => {
+                    const div = document.createElement('div');
+                    div.className = "bg-white p-3 rounded-lg border border-gray-100 flex gap-3 items-center shadow-sm hover:shadow-md transition active:scale-[0.98]";
+                    div.onclick = () => { // Al hacer clic, selecciona el producto
+                        document.getElementById('search-sku').value = p.sku;
+                        this.checkSku();
+                    };
+                    
+                    const imgHtml = p.image && p.image.startsWith('http') 
+                        ? `<img src="${p.image}" class="w-full h-full object-cover">`
+                        : `<div class="w-full h-full flex items-center justify-center text-gray-300 bg-gray-100"><i data-lucide="image" class="w-4 h-4"></i></div>`;
+
+                    div.innerHTML = `
+                        <div class="w-12 h-12 rounded-md overflow-hidden shrink-0 border border-gray-200">
+                            ${imgHtml}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-bold text-gray-800 text-sm truncate">${p.name}</h4>
+                            <div class="flex items-center gap-2 text-xs text-gray-500">
+                                <span class="bg-gray-100 px-1.5 py-0.5 rounded font-mono text-[10px]">${p.sku}</span>
+                                <span class="text-green-600 font-bold">$${p.price}</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="block text-lg font-bold text-blue-600 leading-none">${p.stock}</span>
+                            <span class="text-[10px] text-gray-400">stock</span>
+                        </div>
+                    `;
+                    list.appendChild(div);
+                });
+                lucide.createIcons();
             },
 
             // --- NAVEGACIÓN ---
             showView(id) {
-                ['view-search', 'view-existing', 'view-new', 'view-config'].forEach(v => {
-                    document.getElementById(v).classList.add('hidden');
-                });
+                ['view-search', 'view-existing', 'view-new', 'view-config'].forEach(v => document.getElementById(v).classList.add('hidden'));
                 document.getElementById(id).classList.remove('hidden');
                 lucide.createIcons();
             },
@@ -255,7 +314,7 @@
                 if (url.startsWith('https')) {
                     this.state.url = url;
                     localStorage.setItem('GOOGLE_SCRIPT_URL', url);
-                    this.notify('Conexión guardada');
+                    this.notify('Guardado');
                     this.resetToSearch();
                 } else {
                     this.notify('URL inválida', 'error');
@@ -270,43 +329,41 @@
                 document.getElementById('new-name').value = '';
                 document.getElementById('new-price').value = '';
                 document.getElementById('new-stock').value = '1';
-                document.getElementById('manual-stock-input').classList.add('hidden'); // Ocultar manual por defecto
                 this.updatePhotoUI();
                 this.showView('view-search');
-                setTimeout(() => document.getElementById('search-sku').focus(), 100);
+                this.loadGlobalInventory(); // Recargar lista al volver
             },
 
-            // --- LÓGICA PRINCIPAL: CONSULTA ---
+            // --- LÓGICA PRINCIPAL ---
             async checkSku() {
                 const skuInput = document.getElementById('search-sku');
                 const sku = skuInput.value.trim().toUpperCase();
-                
-                if (!sku) return this.notify('Ingresa un SKU primero', 'error');
+                if (!sku) return this.notify('Ingresa un SKU', 'error');
                 
                 this.state.currentSku = sku;
                 const btn = document.getElementById('btn-search');
                 const originalText = btn.innerHTML;
                 
-                // UI Loading
                 btn.disabled = true;
-                btn.innerHTML = '<div class="loader"></div> Buscando...';
+                btn.innerHTML = '<div class="loader"></div>';
 
                 try {
-                    const response = await fetch(`${this.state.url}?sku=${encodeURIComponent(sku)}`);
-                    if (!response.ok) throw new Error("Error de red");
+                    const response = await fetch(`${this.state.url}?sku=${encodeURIComponent(sku)}`, {
+                        redirect: 'follow'
+                    });
                     
-                    const data = await response.json();
+                    if (!response.ok) throw new Error("Error HTTP");
+                    const json = await response.json();
 
-                    if (data.exists) {
-                        this.state.existingData = data.data; 
-                        this.renderExisting(data.data);
+                    if (json.exists) {
+                        this.state.existingData = json.data; 
+                        this.renderExisting(json.data);
                     } else {
                         this.renderNew();
                     }
-
                 } catch (e) {
-                    console.error(e);
-                    this.notify('Error al consultar. Verifica internet o el Script.', 'error');
+                    console.warn(e);
+                    this.notify('Error de conexión', 'error');
                 } finally {
                     btn.disabled = false;
                     btn.innerHTML = originalText;
@@ -318,8 +375,7 @@
                 document.getElementById('exist-sku-display').textContent = 'SKU: ' + data.sku;
                 document.getElementById('exist-price').textContent = '$' + data.price;
                 document.getElementById('exist-stock-current').textContent = data.stock;
-                document.getElementById('exist-add-qty').value = 1;
-
+                
                 const img = document.getElementById('exist-img');
                 const noImg = document.getElementById('exist-no-img');
                 
@@ -331,7 +387,6 @@
                     img.classList.add('hidden');
                     noImg.classList.remove('hidden');
                 }
-
                 this.showView('view-existing');
             },
 
@@ -340,44 +395,24 @@
                 this.showView('view-new');
             },
 
-            // --- LÓGICA DE ENVÍO (POST) ---
-            
-            // Función Rápida: Agregar +1 Directo
+            // --- ENVÍO ---
             async quickAddOne() {
                 const payload = {
                     sku: this.state.currentSku,
-                    stock: 1, // Siempre suma 1
+                    stock: 1, 
                     price: this.state.existingData.price,
                     name: this.state.existingData.name,
                     imageBase64: null 
                 };
-                // Usamos el ID del botón "+1" para el estado de carga
-                await this.sendData(payload, `Stock actualizado (+1)`, 'btn-add-one');
+                await this.sendData(payload, `Stock +1`, 'btn-add-one');
             },
 
-            // Función Manual: Agregar cantidad específica
-            async submitExisting() {
-                const qtyToAdd = parseInt(document.getElementById('exist-add-qty').value) || 0;
-                if (qtyToAdd < 1) return this.notify('Cantidad inválida', 'error');
-
-                const payload = {
-                    sku: this.state.currentSku,
-                    stock: qtyToAdd,
-                    price: this.state.existingData.price,
-                    name: this.state.existingData.name,
-                    imageBase64: null 
-                };
-
-                await this.sendData(payload, `Stock actualizado (+${qtyToAdd})`, 'btn-update-manual');
-            },
-
-            // 2. Enviar Nuevo Producto
             async submitNew() {
                 const name = document.getElementById('new-name').value.trim();
                 const price = document.getElementById('new-price').value;
                 const stock = document.getElementById('new-stock').value;
 
-                if (!name || !price) return this.notify('Completa nombre y precio', 'error');
+                if (!name || !price) return this.notify('Faltan datos', 'error');
 
                 const payload = {
                     sku: this.state.currentSku,
@@ -386,20 +421,13 @@
                     stock: stock,
                     imageBase64: this.state.currentPhoto
                 };
-
-                await this.sendData(payload, 'Producto registrado correctamente', 'btn-create');
+                await this.sendData(payload, 'Registrado', 'btn-create');
             },
 
-            // Función genérica de envío
             async sendData(payload, successMessage, btnId) {
                 const btn = document.getElementById(btnId);
-                const originalText = btn ? btn.innerText : '';
                 const originalHTML = btn ? btn.innerHTML : '';
-
-                if(btn) {
-                    btn.disabled = true;
-                    btn.innerText = 'Guardando...';
-                }
+                if(btn) { btn.disabled = true; btn.innerText = 'Guardando...'; }
 
                 try {
                     await fetch(this.state.url, {
@@ -408,27 +436,21 @@
                         headers: { 'Content-Type': 'text/plain' },
                         body: JSON.stringify(payload)
                     });
-
                     this.notify(successMessage, 'success');
-                    this.addToHistory(payload);
-                    this.resetToSearch();
-
+                    this.resetToSearch(); 
                 } catch (e) {
-                    this.notify('Error de conexión', 'error');
+                    this.notify('Error conexión', 'error');
                 } finally {
-                    if(btn) {
-                        btn.disabled = false;
-                        btn.innerHTML = originalHTML; // Restauramos icono y texto
-                    }
+                    if(btn) { btn.disabled = false; btn.innerHTML = originalHTML; }
                 }
             },
 
-            // --- CÁMARA ---
+            // --- CÁMARA Y UTILIDADES ---
             async startCamera(mode) {
                 const modal = document.getElementById('camera-modal');
                 const video = document.getElementById('camera-video');
-                const controls = document.getElementById('photo-controls');
                 const readerDiv = document.getElementById('reader');
+                const controls = document.getElementById('photo-controls');
 
                 modal.classList.remove('hidden');
 
@@ -436,32 +458,25 @@
                     video.classList.add('hidden');
                     controls.classList.add('hidden');
                     readerDiv.classList.remove('hidden');
-                    
                     this.html5QrCode = new Html5Qrcode("reader");
                     try {
                         await this.html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
-                            (decodedText) => {
-                                document.getElementById('search-sku').value = decodedText;
+                            (text) => {
+                                document.getElementById('search-sku').value = text;
                                 this.notify('Código detectado');
                                 this.stopCamera();
-                                // Opcional: Ejecutar búsqueda automáticamente al escanear
-                                // this.checkSku(); 
-                            }, 
-                        () => {});
-                    } catch (e) { this.stopCamera(); this.notify('Error cámara', 'error'); }
-
+                                this.checkSku(); 
+                            }, () => {});
+                    } catch (e) { this.stopCamera(); }
                 } else {
                     readerDiv.classList.add('hidden');
                     video.classList.remove('hidden');
                     controls.classList.remove('hidden');
-
                     try {
-                        const stream = await navigator.mediaDevices.getUserMedia({ 
-                            video: { facingMode: 'environment', width: { ideal: 1920 } } 
-                        });
+                        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 } } });
                         this.state.stream = stream;
                         video.srcObject = stream;
-                    } catch (e) { this.stopCamera(); this.notify('Error cámara', 'error'); }
+                    } catch (e) { this.stopCamera(); }
                 }
             },
 
@@ -495,28 +510,8 @@
                 }
             },
 
-            clearPhoto() {
-                this.state.currentPhoto = null;
-                this.updatePhotoUI();
-            },
-
-            // --- UTILIDADES ---
-            adjustStock(delta) {
-                const input = document.getElementById('exist-add-qty');
-                let val = parseInt(input.value) || 0;
-                val += delta;
-                if (val < 1) val = 1;
-                input.value = val;
-            },
-
-            addToHistory(item) {
-                const list = document.getElementById('history-list');
-                const div = document.createElement('div');
-                div.className = "bg-white p-2 rounded border-l-4 border-green-500 text-xs flex justify-between items-center shadow-sm";
-                div.innerHTML = `<span><strong>${item.name || 'Stock Update'}</strong> (${item.sku})</span> <span class="text-green-600 font-bold">+${item.stock}</span>`;
-                list.prepend(div);
-            },
-
+            clearPhoto() { this.state.currentPhoto = null; this.updatePhotoUI(); },
+            
             notify(msg, type = 'success') {
                 const el = document.getElementById('notification');
                 el.textContent = msg;
