@@ -546,20 +546,29 @@
                 if(btn) { btn.disabled = true; btn.innerText = 'Procesando...'; }
 
                 try {
-                    // Usar mode: 'no-cors' tiene limitaciones (no lee respuesta), pero es necesario para forms simples a Google Script
-                    // Para DELETE y UPDATE complejos, idealmente el script debe devolver JSONP o usar proxy, 
-                    // pero con 'no-cors' asumimos éxito si no hay error de red.
-                    await fetch(this.state.url, {
+                    // SE HA CAMBIADO PARA FORZAR LECTURA DE RESPUESTA
+                    // Esto evita el "Falso Positivo" de éxito.
+                    const response = await fetch(this.state.url, {
                         method: 'POST',
-                        mode: 'no-cors', 
-                        headers: { 'Content-Type': 'text/plain' },
+                        redirect: 'follow', // IMPORTANTE para recibir respuesta de GAS
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                         body: JSON.stringify(payload)
                     });
-                    
-                    this.notify(successMessage, 'success');
-                    this.resetToSearch(); 
+
+                    const json = await response.json();
+
+                    if (json.status === 'success' || json.status === 'deleted' || json.status === 'updated') {
+                        this.notify(successMessage, 'success');
+                        this.resetToSearch();
+                    } else if (json.status === 'not_found') {
+                         this.notify('Error: Producto no encontrado en la hoja', 'error');
+                    } else {
+                         throw new Error(json.error || 'Error desconocido del servidor');
+                    }
+
                 } catch (e) {
-                    this.notify('Error conexión', 'error');
+                    console.error(e);
+                    this.notify('Error: No se pudo confirmar la acción', 'error');
                 } finally {
                     if(btn) { btn.disabled = false; btn.innerHTML = originalHTML; }
                 }
