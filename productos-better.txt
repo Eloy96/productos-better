@@ -1,463 +1,632 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Inventario Drive</title>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Iconos Lucide -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <!-- Escáner QR -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-
-    <style>
-        body { -webkit-tap-highlight-color: transparent; }
-        .scan-region-highlight { border-radius: 20px; border: 4px solid #4ade80; box-shadow: 0 0 0 100vmax rgba(0,0,0,0.7); pointer-events: none; }
-        #reader video { object-fit: cover; border-radius: 12px; }
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Productos Better</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    body { -webkit-tap-highlight-color: transparent; }
+    .loader { width: 22px; height: 22px; border: 3px solid #d1fae5; border-top-color: #047857; border-radius: 999px; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .camera-open #camera-modal { display: flex; }
+    .settings-open #settings-modal { display: flex; }
+  </style>
 </head>
-<body class="bg-gray-100 font-sans h-screen flex flex-col overflow-hidden">
+<body class="min-h-screen bg-slate-100 text-slate-900">
+  <header class="sticky top-0 z-30 bg-emerald-700 text-white shadow">
+    <div class="max-w-6xl mx-auto px-3 sm:px-4 py-3 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-white/15 grid place-items-center shrink-0">
+        <i data-lucide="package-search" class="w-5 h-5"></i>
+      </div>
+      <div class="min-w-0">
+        <h1 class="font-black text-lg leading-tight">Inventario Better</h1>
+        <p id="status-label" class="text-xs text-emerald-100">Cargando inventario...</p>
+      </div>
+      <button id="settings-button" class="ml-auto w-10 h-10 rounded-full grid place-items-center hover:bg-white/15">
+        <i data-lucide="settings" class="w-5 h-5"></i>
+      </button>
+    </div>
+  </header>
 
-    <!-- Header -->
-    <header class="bg-green-700 text-white p-4 shadow-lg flex justify-between items-center shrink-0 z-20">
-        <div>
-            <h1 class="text-lg font-bold flex items-center gap-2">
-                <i data-lucide="cloud-upload"></i> Inventario Drive
-            </h1>
-            <p class="text-[10px] text-green-200 opacity-90">Conectado a Google Sheets</p>
-        </div>
-        <button onclick="app.toggleConfig()" class="p-2 hover:bg-green-800 rounded-full transition">
-            <i data-lucide="settings" class="w-5 h-5"></i>
+  <main class="max-w-6xl mx-auto px-3 sm:px-4 py-4 pb-24">
+    <section class="rounded-xl bg-white border border-slate-200 shadow-sm p-3 mb-4">
+      <label class="text-[11px] font-black uppercase text-slate-500">Buscar o registrar SKU</label>
+      <div class="mt-2 flex gap-2">
+        <input id="sku-input" class="min-w-0 flex-1 h-12 rounded-xl border-2 border-slate-200 px-3 text-center font-mono uppercase outline-none focus:border-emerald-600" placeholder="SKU">
+        <button id="scan-button" class="w-12 rounded-xl bg-slate-900 text-white grid place-items-center active:scale-95">
+          <i data-lucide="scan-line" class="w-5 h-5"></i>
         </button>
-    </header>
+      </div>
+      <div class="mt-2 grid grid-cols-2 gap-2">
+        <button id="search-button" class="h-12 rounded-xl bg-emerald-600 text-white font-black flex items-center justify-center gap-2 active:scale-[0.99]">
+          <i data-lucide="search" class="w-4 h-4"></i>
+          Buscar
+        </button>
+        <button id="new-button" class="h-12 rounded-xl bg-blue-600 text-white font-black flex items-center justify-center gap-2 active:scale-[0.99]">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          Nuevo
+        </button>
+      </div>
+    </section>
 
-    <!-- Main Content Area -->
-    <main id="app-container" class="flex-1 overflow-y-auto relative p-4 pb-24">
-        
-        <!-- VISTA: Lista de Productos (Principal) -->
-        <div id="view-list" class="fade-in space-y-4">
-            <div id="empty-state" class="hidden text-center py-12 text-gray-400">
-                <i data-lucide="file-spreadsheet" class="w-16 h-16 mx-auto mb-4 opacity-30"></i>
-                <p class="text-lg font-medium">Listo para capturar</p>
-                <p class="text-xs mt-2">Los datos se enviarán a tu hoja automáticamente.</p>
-            </div>
-            
-            <div id="products-list" class="space-y-3">
-                <!-- Los items se inyectan aquí con JS -->
-            </div>
+    <section class="grid grid-cols-3 gap-2 mb-4">
+      <div class="rounded-xl bg-white border border-slate-200 p-3">
+        <p class="text-[10px] font-black uppercase text-slate-500">Productos</p>
+        <p id="stat-products" class="text-xl font-black">0</p>
+      </div>
+      <div class="rounded-xl bg-white border border-slate-200 p-3">
+        <p class="text-[10px] font-black uppercase text-slate-500">Piezas</p>
+        <p id="stat-stock" class="text-xl font-black text-emerald-700">0</p>
+      </div>
+      <div class="rounded-xl bg-white border border-slate-200 p-3">
+        <p class="text-[10px] font-black uppercase text-slate-500">Agotados</p>
+        <p id="stat-empty" class="text-xl font-black text-red-600">0</p>
+      </div>
+    </section>
+
+    <section id="editor-section" class="hidden scroll-mt-24 rounded-xl bg-white border border-slate-200 shadow-sm p-4 mb-4">
+      <div class="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <h2 id="editor-title" class="font-black text-lg">Producto</h2>
+          <p id="editor-subtitle" class="text-xs text-slate-500 font-mono"></p>
         </div>
+        <button id="close-editor" class="w-10 h-10 rounded-full bg-slate-100 grid place-items-center">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
 
-        <!-- VISTA: Formulario -->
-        <div id="view-form" class="hidden fade-in bg-white rounded-xl shadow-xl p-5 mb-10">
-            <div class="flex justify-between items-center mb-4 border-b pb-2">
-                <h2 class="text-lg font-bold text-gray-800">Nuevo Producto</h2>
-                <button onclick="app.showView('list')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
-            </div>
-
-            <form id="inventory-form" onsubmit="app.handleSubmit(event)" class="space-y-4">
-                
-                <!-- Foto -->
-                <div class="flex flex-col items-center justify-center">
-                    <div id="photo-preview-container" class="hidden relative w-full">
-                        <img id="photo-preview" src="" class="w-full h-48 object-cover rounded-lg shadow-md border border-gray-200">
-                        <button type="button" onclick="app.clearPhoto()" class="absolute top-2 right-2 bg-red-600 text-white rounded-full p-2 shadow-lg hover:bg-red-700 transition">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
-                        <div class="absolute bottom-2 left-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded backdrop-blur">
-                            Se guardará en Drive
-                        </div>
-                    </div>
-                    
-                    <button id="btn-take-photo" type="button" onclick="app.startCamera('photo')" class="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-green-500 hover:text-green-500 bg-gray-50 transition-colors">
-                        <i data-lucide="camera" class="w-8 h-8 mb-2"></i>
-                        <span class="text-sm font-bold">TOMAR FOTO</span>
-                    </button>
-                </div>
-
-                <!-- SKU -->
-                <div>
-                    <label class="text-xs font-bold text-gray-500 uppercase">SKU / Código</label>
-                    <div class="flex gap-2">
-                        <input type="text" id="inp-sku" required placeholder="Escanear o escribir..." 
-                               class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none font-mono text-sm shadow-sm transition">
-                        <button type="button" onclick="app.startCamera('scanner')" class="bg-blue-600 text-white px-4 rounded-lg hover:bg-blue-700 shadow-md transition active:scale-95">
-                            <i data-lucide="scan-barcode"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Nombre -->
-                <div>
-                    <label class="text-xs font-bold text-gray-500 uppercase">Nombre del Producto</label>
-                    <input type="text" id="inp-name" required placeholder="Ej. Lámpara LED" 
-                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none shadow-sm text-sm">
-                </div>
-
-                <!-- Stock y Precio -->
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-xs font-bold text-gray-500 uppercase">Stock</label>
-                        <input type="number" id="inp-stock" min="1" value="1" 
-                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-center font-bold shadow-sm">
-                    </div>
-                    <div>
-                        <label class="text-xs font-bold text-gray-500 uppercase">Precio ($)</label>
-                        <input type="number" id="inp-price" required step="0.01" placeholder="0.00" 
-                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-center shadow-sm">
-                    </div>
-                </div>
-
-                <!-- Botones Acción -->
-                <div class="flex gap-3 pt-2">
-                    <button type="button" onclick="app.showView('list')" class="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition">Cancelar</button>
-                    <button type="submit" id="btn-submit" class="flex-1 py-3 bg-green-600 text-white rounded-lg font-bold shadow-md hover:bg-green-700 flex justify-center items-center gap-2 transition active:scale-95">
-                        <span id="btn-text">Guardar</span>
-                        <i data-lucide="cloud-upload" class="w-4 h-4"></i>
-                    </button>
-                </div>
-            </form>
-        </div>
-
-        <!-- VISTA: Configuración -->
-        <div id="view-config" class="hidden fade-in bg-gray-800 text-white p-6 rounded-xl shadow-2xl">
-            <div class="text-center mb-6">
-                <i data-lucide="settings" class="w-12 h-12 mx-auto text-green-400 mb-2"></i>
-                <h2 class="text-xl font-bold">Configuración</h2>
-                <p class="text-sm text-gray-400">Enlace a Google Apps Script</p>
-            </div>
-            <input id="inp-script-url" class="w-full p-3 bg-gray-700 border border-gray-600 rounded mb-4 text-xs text-green-300 font-mono break-all focus:outline-none focus:border-green-500" value="https://script.google.com/macros/s/AKfycbwczNs-lS1aUyJxpvSMuYGekx9zSHxNwWONxw3PdkLhTIbG3D6LqE7SLx4mgl-SwGV5/exec">
-            <button onclick="app.saveConfig()" class="w-full bg-green-600 py-3 rounded font-bold hover:bg-green-700 shadow-lg">Guardar y Salir</button>
-        </div>
-
-    </main>
-
-    <!-- Floating Action Button -->
-    <button id="fab-add" onclick="app.resetForm(); app.showView('form')" class="fixed bottom-6 right-6 bg-green-600 text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center z-30 hover:bg-green-700 transition transform hover:scale-110 active:scale-95">
-        <i data-lucide="plus" class="w-8 h-8"></i>
-    </button>
-
-    <!-- Camera Overlay Modal -->
-    <div id="camera-modal" class="fixed inset-0 bg-black z-50 hidden flex flex-col">
-        <div class="relative flex-1 flex flex-col justify-center items-center overflow-hidden bg-black">
-            
-            <!-- Video Element -->
-            <video id="camera-video" autoplay playsinline muted class="absolute w-full h-full object-cover"></video>
-            
-            <!-- Scanner Element -->
-            <div id="reader" class="w-full h-full hidden"></div>
-            
-            <!-- Controls -->
-            <button onclick="app.stopCamera()" class="absolute top-4 right-4 bg-black/40 text-white p-3 rounded-full backdrop-blur z-50">
-                <i data-lucide="x" class="w-6 h-6"></i>
+      <div class="grid gap-4 lg:grid-cols-[280px_1fr]">
+        <div>
+          <div id="photo-wrap" class="hidden relative rounded-xl border border-slate-200 bg-slate-50 overflow-hidden">
+            <img id="photo-preview" class="w-full aspect-square object-contain">
+            <button id="clear-photo" class="absolute top-2 right-2 w-10 h-10 rounded-full bg-red-600 text-white grid place-items-center shadow-lg">
+              <i data-lucide="trash-2" class="w-5 h-5"></i>
             </button>
-            
-            <!-- Scanner Overlay Text -->
-            <div id="scanner-overlay" class="hidden absolute bottom-20 bg-black/60 px-4 py-2 rounded-full text-white text-sm backdrop-blur">
-                Apunta al código de barras
+          </div>
+          <button id="photo-button" class="w-full aspect-square rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 text-slate-500 grid place-items-center">
+            <span class="flex flex-col items-center gap-2 font-black">
+              <i data-lucide="camera" class="w-9 h-9"></i>
+              Tomar foto
+            </span>
+          </button>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="text-[11px] font-black uppercase text-slate-500">SKU</label>
+            <input id="form-sku" class="mt-1 w-full h-12 rounded-xl border border-slate-200 px-3 font-mono uppercase outline-none focus:border-emerald-600">
+          </div>
+          <div>
+            <label class="text-[11px] font-black uppercase text-slate-500">Nombre</label>
+            <input id="form-name" class="mt-1 w-full h-12 rounded-xl border border-slate-200 px-3 outline-none focus:border-emerald-600" placeholder="Nombre del producto">
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[11px] font-black uppercase text-slate-500">Stock</label>
+              <input id="form-stock" type="number" min="0" class="mt-1 w-full h-12 rounded-xl border border-slate-200 px-3 text-center font-black outline-none focus:border-emerald-600">
             </div>
+            <div>
+              <label class="text-[11px] font-black uppercase text-slate-500">Precio</label>
+              <input id="form-price" type="number" min="0" step="0.01" class="mt-1 w-full h-12 rounded-xl border border-slate-200 px-3 text-center font-black outline-none focus:border-emerald-600">
+            </div>
+          </div>
+
+          <div id="existing-actions" class="hidden grid grid-cols-2 gap-2 pt-1">
+            <button id="add-one-button" class="h-12 rounded-xl bg-blue-600 text-white font-black flex items-center justify-center gap-2">
+              <i data-lucide="plus-circle" class="w-5 h-5"></i>
+              Stock +1
+            </button>
+            <button id="delete-button" class="h-12 rounded-xl bg-red-600 text-white font-black flex items-center justify-center gap-2">
+              <i data-lucide="trash-2" class="w-5 h-5"></i>
+              Eliminar
+            </button>
+          </div>
+
+          <button id="save-button" class="w-full h-13 rounded-xl bg-emerald-600 text-white py-3.5 font-black flex items-center justify-center gap-2 shadow-lg shadow-emerald-100">
+            <i data-lucide="save" class="w-5 h-5"></i>
+            Guardar producto
+          </button>
         </div>
-        
-        <!-- Shutter Button (Photo Mode Only) -->
-        <div id="shutter-container" class="h-24 bg-black flex items-center justify-center shrink-0">
-            <button onclick="app.capturePhoto()" class="w-16 h-16 bg-white rounded-full border-4 border-gray-400 hover:border-gray-200 transition transform active:scale-95"></button>
+      </div>
+    </section>
+
+    <section>
+      <div class="flex gap-2 mb-3">
+        <div class="relative flex-1">
+          <input id="filter-input" class="w-full h-11 rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-emerald-600" placeholder="Filtrar inventario">
+          <i data-lucide="filter" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
         </div>
+        <button id="refresh-button" class="w-11 h-11 rounded-xl bg-white border border-slate-200 grid place-items-center">
+          <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div id="loading-state" class="hidden py-16 text-center">
+        <div class="loader mx-auto mb-3"></div>
+        <p class="text-sm text-slate-500">Cargando...</p>
+      </div>
+
+      <div id="inventory-list" class="grid gap-2 md:grid-cols-2"></div>
+    </section>
+  </main>
+
+  <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/45 p-4 items-center justify-center">
+    <section class="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-black text-lg">Configuracion</h2>
+        <button id="close-settings" class="w-10 h-10 rounded-full bg-slate-100 grid place-items-center">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <label class="text-[11px] font-black uppercase text-slate-500">URL Apps Script</label>
+      <input id="api-url-input" class="mt-1 w-full rounded-xl border border-slate-200 p-3 text-xs font-mono outline-none focus:border-emerald-600">
+      <p class="mt-2 text-xs text-slate-500">Normalmente no necesitas tocar esto.</p>
+      <button id="save-settings" class="mt-4 w-full rounded-xl bg-emerald-600 text-white py-3 font-black">Guardar</button>
+    </section>
+  </div>
+
+  <div id="camera-modal" class="hidden fixed inset-0 z-[60] bg-black flex-col">
+    <div class="relative flex-1 min-h-0">
+      <video id="camera-video" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
+      <div id="qr-reader" class="absolute inset-0 hidden"></div>
+      <button id="close-camera" class="absolute top-4 right-4 w-11 h-11 rounded-full bg-white/20 text-white grid place-items-center backdrop-blur">
+        <i data-lucide="x" class="w-7 h-7"></i>
+      </button>
     </div>
-
-    <!-- Notification Toast -->
-    <div id="notification" class="fixed top-20 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-50 text-white font-medium text-sm hidden transition-all duration-300">
-        Mensaje
+    <div id="photo-controls" class="h-24 bg-black flex items-center justify-center">
+      <button id="capture-button" class="w-16 h-16 rounded-full bg-white border-4 border-slate-400"></button>
     </div>
+  </div>
 
-    <!-- Canvas oculto para procesar foto -->
-    <canvas id="photo-canvas" class="hidden"></canvas>
+  <div id="toast" class="hidden fixed top-24 left-1/2 -translate-x-1/2 z-[80] max-w-[92vw] rounded-full px-5 py-3 text-sm font-bold text-white shadow-2xl text-center"></div>
+  <canvas id="photo-canvas" class="hidden"></canvas>
 
-    <!-- JavaScript Logic -->
-    <script>
-        const app = {
-            data: {
-                scriptUrl: localStorage.getItem('GOOGLE_SCRIPT_URL') || "https://script.google.com/macros/s/AKfycbwczNs-lS1aUyJxpvSMuYGekx9zSHxNwWONxw3PdkLhTIbG3D6LqE7SLx4mgl-SwGV5/exec",
-                currentImageBase64: null,
-                stream: null,
-                products: []
-            },
-            
-            init() {
-                lucide.createIcons();
-                this.renderList();
-                
-                // Si no hay URL configurada, mostrar config
-                if(!this.data.scriptUrl) {
-                   this.showView('config');
-                }
-            },
+  <script>
+    const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbwczNs-lS1aUyJxpvSMuYGekx9zSHxNwWONxw3PdkLhTIbG3D6LqE7SLx4mgl-SwGV5/exec";
+    const API_URL_KEY = "productos_better_admin_api_url_simple";
 
-            // --- Navigation ---
-            showView(viewName) {
-                // Hide all
-                document.getElementById('view-list').classList.add('hidden');
-                document.getElementById('view-form').classList.add('hidden');
-                document.getElementById('view-config').classList.add('hidden');
-                document.getElementById('fab-add').classList.add('hidden');
-                
-                // Show requested
-                document.getElementById(`view-${viewName}`).classList.remove('hidden');
-                
-                // FAB Logic
-                if(viewName === 'list') {
-                    document.getElementById('fab-add').classList.remove('hidden');
-                    this.renderList();
-                }
-            },
+    const state = {
+      apiUrl: localStorage.getItem(API_URL_KEY) || DEFAULT_API_URL,
+      products: [],
+      filtered: [],
+      mode: "create",
+      currentPhoto: null,
+      removeImage: false,
+      stream: null,
+      qr: null,
+      busy: false
+    };
 
-            toggleConfig() {
-                const configView = document.getElementById('view-config');
-                if(configView.classList.contains('hidden')) {
-                    this.showView('config');
-                } else {
-                    this.showView('list');
-                }
-            },
+    const $ = id => document.getElementById(id);
 
-            saveConfig() {
-                const url = document.getElementById('inp-script-url').value.trim();
-                if(!url.startsWith('https://script.google.com/')) {
-                    this.notify('URL inválida', 'error');
-                    return;
-                }
-                this.data.scriptUrl = url;
-                localStorage.setItem('GOOGLE_SCRIPT_URL', url);
-                this.notify('Configuración guardada');
-                this.showView('list');
-            },
+    document.addEventListener("DOMContentLoaded", () => {
+      bindEvents();
+      $("api-url-input").value = state.apiUrl;
+      loadInventory(true);
+      lucide.createIcons();
+    });
 
-            // --- Form Handling ---
-            resetForm() {
-                document.getElementById('inventory-form').reset();
-                this.data.currentImageBase64 = null;
-                this.updatePhotoUI();
-            },
+    function bindEvents() {
+      $("search-button").addEventListener("click", checkSku);
+      $("new-button").addEventListener("click", newProductFromInput);
+      $("sku-input").addEventListener("keydown", event => { if (event.key === "Enter") checkSku(); });
+      $("filter-input").addEventListener("input", renderInventory);
+      $("refresh-button").addEventListener("click", () => loadInventory(true));
+      $("close-editor").addEventListener("click", closeEditor);
+      $("save-button").addEventListener("click", saveProduct);
+      $("add-one-button").addEventListener("click", addOne);
+      $("delete-button").addEventListener("click", deleteProduct);
+      $("photo-button").addEventListener("click", () => startCamera("photo"));
+      $("clear-photo").addEventListener("click", clearPhoto);
+      $("scan-button").addEventListener("click", () => startCamera("scan"));
+      $("close-camera").addEventListener("click", stopCamera);
+      $("capture-button").addEventListener("click", capturePhoto);
+      $("settings-button").addEventListener("click", openSettings);
+      $("close-settings").addEventListener("click", closeSettings);
+      $("save-settings").addEventListener("click", saveSettings);
+    }
 
-            clearPhoto() {
-                this.data.currentImageBase64 = null;
-                this.updatePhotoUI();
-            },
+    async function loadInventory(showLoader) {
+      if (showLoader) $("loading-state").classList.remove("hidden");
 
-            updatePhotoUI() {
-                const previewContainer = document.getElementById('photo-preview-container');
-                const btnTakePhoto = document.getElementById('btn-take-photo');
-                const previewImg = document.getElementById('photo-preview');
+      try {
+        const response = await fetch(`${state.apiUrl}?action=getAll&limit=1000`, { redirect: "follow" });
+        const json = await response.json();
+        if (json.status !== "success") throw new Error(json.error || "Respuesta invalida");
 
-                if (this.data.currentImageBase64) {
-                    previewImg.src = this.data.currentImageBase64;
-                    previewContainer.classList.remove('hidden');
-                    btnTakePhoto.classList.add('hidden');
-                } else {
-                    previewContainer.classList.add('hidden');
-                    btnTakePhoto.classList.remove('hidden');
-                }
-            },
+        state.products = (json.data || []).map(normalizeProduct).filter(p => p.sku);
+        renderInventory();
+        $("status-label").textContent = "Actualizado " + new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+      } catch (error) {
+        console.error(error);
+        $("status-label").textContent = "Sin conexion";
+        toast("No se pudo cargar el inventario", "error");
+      } finally {
+        $("loading-state").classList.add("hidden");
+      }
+    }
 
-            async handleSubmit(e) {
-                e.preventDefault();
-                const btn = document.getElementById('btn-submit');
-                const btnText = document.getElementById('btn-text');
-                
-                // Loading state
-                btn.disabled = true;
-                btn.classList.add('opacity-70');
-                btnText.textContent = 'Enviando...';
+    function renderInventory() {
+      const terms = normalizeText($("filter-input").value).split(" ").filter(Boolean);
+      state.filtered = state.products.filter(product => {
+        const haystack = normalizeText(`${product.name} ${product.sku}`);
+        return terms.every(term => haystack.includes(term));
+      });
 
-                const payload = {
-                    name: document.getElementById('inp-name').value,
-                    sku: document.getElementById('inp-sku').value,
-                    stock: document.getElementById('inp-stock').value,
-                    price: document.getElementById('inp-price').value,
-                    imageBase64: this.data.currentImageBase64
-                };
+      const list = $("inventory-list");
+      list.innerHTML = "";
 
-                try {
-                    await fetch(this.data.scriptUrl, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'text/plain' },
-                        body: JSON.stringify(payload)
-                    });
+      if (state.filtered.length === 0) {
+        list.innerHTML = '<div class="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500 md:col-span-2">Sin productos</div>';
+      } else {
+        const fragment = document.createDocumentFragment();
+        state.filtered.forEach(product => fragment.appendChild(inventoryCard(product)));
+        list.appendChild(fragment);
+      }
 
-                    // Success handling (Blind due to no-cors)
-                    this.data.products.unshift({ ...payload, id: Date.now() });
-                    this.notify('¡Datos enviados a Drive!', 'success');
-                    this.showView('list');
+      renderStats();
+      lucide.createIcons();
+    }
 
-                } catch (error) {
-                    console.error(error);
-                    this.notify('Error de conexión', 'error');
-                } finally {
-                    btn.disabled = false;
-                    btn.classList.remove('opacity-70');
-                    btnText.textContent = 'Guardar';
-                }
-            },
+    function inventoryCard(product) {
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "rounded-xl bg-white border border-slate-200 p-3 shadow-sm text-left flex items-center gap-3 active:scale-[0.99]";
+      card.addEventListener("click", () => openEditor("update", product));
 
-            // --- List Rendering ---
-            renderList() {
-                const listContainer = document.getElementById('products-list');
-                const emptyState = document.getElementById('empty-state');
-                
-                listContainer.innerHTML = '';
+      const imgBox = document.createElement("div");
+      imgBox.className = "w-16 h-16 rounded-lg bg-slate-50 border border-slate-100 overflow-hidden grid place-items-center shrink-0";
+      if (product.imageSafe) {
+        const img = document.createElement("img");
+        img.src = product.imageSafe;
+        img.alt = product.name;
+        img.className = "w-full h-full object-contain";
+        img.onerror = () => img.replaceWith(imagePlaceholder());
+        imgBox.appendChild(img);
+      } else {
+        imgBox.appendChild(imagePlaceholder());
+      }
 
-                if(this.data.products.length === 0) {
-                    emptyState.classList.remove('hidden');
-                    return;
-                }
-                
-                emptyState.classList.add('hidden');
-                
-                // Cabecera "Recientes"
-                const header = document.createElement('div');
-                header.className = 'text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-4 ml-1';
-                header.innerText = 'Enviados Recientemente';
-                listContainer.appendChild(header);
+      const info = document.createElement("div");
+      info.className = "min-w-0 flex-1";
+      info.innerHTML = `
+        <h3 class="font-black text-sm leading-snug line-clamp-2">${escapeHtml(product.name)}</h3>
+        <p class="font-mono text-[11px] text-slate-500 mt-1">${escapeHtml(product.sku)}</p>
+        <p class="font-black text-emerald-700">${formatPrice(product.price)}</p>
+      `;
 
-                this.data.products.forEach(p => {
-                    const item = document.createElement('div');
-                    item.className = 'bg-white p-3 rounded-lg shadow-sm flex items-center gap-3 border-l-4 border-green-500 animate-[fadeIn_0.3s_ease-out]';
-                    item.innerHTML = `
-                        <div class="w-12 h-12 bg-gray-200 rounded-md overflow-hidden shrink-0">
-                            ${p.imageBase64 
-                                ? `<img src="${p.imageBase64}" class="w-full h-full object-cover">` 
-                                : '<div class="w-full h-full flex items-center justify-center text-gray-400"><i data-lucide="image"></i></div>'}
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <h3 class="font-bold text-gray-800 truncate text-sm">${p.name}</h3>
-                            <div class="flex items-center gap-2 text-xs text-gray-500">
-                                <span class="bg-gray-100 px-1.5 py-0.5 rounded font-mono">${p.sku}</span>
-                                <span class="text-green-600 font-bold">$${p.price}</span>
-                                <span class="text-blue-600 font-bold">+${p.stock}</span>
-                            </div>
-                        </div>
-                        <div class="text-green-500">
-                            <i data-lucide="check-circle" class="w-5 h-5"></i>
-                        </div>
-                    `;
-                    listContainer.appendChild(item);
-                });
-                lucide.createIcons();
-            },
+      const stock = document.createElement("div");
+      stock.className = "text-right shrink-0";
+      stock.innerHTML = `<p class="text-2xl font-black ${product.stock <= 0 ? "text-red-600" : "text-blue-700"}">${product.stock}</p><p class="text-[10px] font-black uppercase text-slate-400">stock</p>`;
 
-            // --- Camera & Scanner ---
-            async startCamera(mode) {
-                const modal = document.getElementById('camera-modal');
-                const video = document.getElementById('camera-video');
-                const scannerOverlay = document.getElementById('scanner-overlay');
-                const shutter = document.getElementById('shutter-container');
-                const readerDiv = document.getElementById('reader');
+      card.append(imgBox, info, stock);
+      return card;
+    }
 
-                modal.classList.remove('hidden');
+    async function checkSku() {
+      const sku = normalizeSku($("sku-input").value);
+      if (!sku) return toast("Ingresa un SKU", "error");
 
-                if (mode === 'scanner') {
-                    video.classList.add('hidden');
-                    readerDiv.classList.remove('hidden');
-                    shutter.classList.add('hidden');
-                    scannerOverlay.classList.remove('hidden');
-                    
-                    // Start QR Scanner
-                    this.html5QrCode = new Html5Qrcode("reader");
-                    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-                    
-                    try {
-                        await this.html5QrCode.start({ facingMode: "environment" }, config, 
-                            (decodedText) => {
-                                // Success
-                                document.getElementById('inp-sku').value = decodedText;
-                                this.notify('Código capturado: ' + decodedText);
-                                this.stopCamera();
-                            },
-                            () => {} // Ignore scan errors
-                        );
-                    } catch (err) {
-                        this.notify('Error al iniciar escáner', 'error');
-                        this.stopCamera();
-                    }
+      setBusy($("search-button"), true, "Buscando...");
+      try {
+        const response = await fetch(`${state.apiUrl}?sku=${encodeURIComponent(sku)}`, { redirect: "follow" });
+        const json = await response.json();
+        if (json.exists) openEditor("update", normalizeProduct(json.data));
+        else openEditor("create", emptyProduct(sku));
+      } catch (error) {
+        console.error(error);
+        toast("No se pudo buscar", "error");
+      } finally {
+        setBusy($("search-button"), false);
+      }
+    }
 
-                } else {
-                    // Photo Mode
-                    readerDiv.classList.add('hidden');
-                    video.classList.remove('hidden');
-                    shutter.classList.remove('hidden');
-                    scannerOverlay.classList.add('hidden');
+    function newProductFromInput() {
+      const sku = normalizeSku($("sku-input").value);
+      if (!sku) return toast("Escribe o escanea un SKU", "error");
+      const existing = state.products.find(p => p.sku === sku);
+      openEditor(existing ? "update" : "create", existing || emptyProduct(sku));
+    }
 
-                    try {
-                        const stream = await navigator.mediaDevices.getUserMedia({ 
-                            video: { facingMode: 'environment' } 
-                        });
-                        this.data.stream = stream;
-                        video.srcObject = stream;
-                    } catch (err) {
-                        this.notify('No se pudo acceder a la cámara', 'error');
-                        this.stopCamera();
-                    }
-                }
-            },
+    function openEditor(mode, product) {
+      state.mode = mode;
+      state.currentPhoto = null;
+      state.removeImage = false;
 
-            stopCamera() {
-                const modal = document.getElementById('camera-modal');
-                modal.classList.add('hidden');
-                
-                // Stop Video Stream
-                if (this.data.stream) {
-                    this.data.stream.getTracks().forEach(track => track.stop());
-                    this.data.stream = null;
-                }
-                
-                // Stop Scanner
-                if (this.html5QrCode) {
-                    this.html5QrCode.stop().then(() => {
-                        this.html5QrCode.clear();
-                        this.html5QrCode = null;
-                    }).catch(console.error);
-                }
-            },
+      $("editor-section").classList.remove("hidden");
+      $("editor-title").textContent = mode === "create" ? "Nuevo producto" : "Editar producto";
+      $("editor-subtitle").textContent = product.sku || "";
+      $("form-sku").value = product.sku || "";
+      $("form-sku").disabled = mode === "update";
+      $("form-name").value = product.name || "";
+      $("form-stock").value = Number(product.stock || 0);
+      $("form-price").value = Number(product.price || 0);
+      $("existing-actions").classList.toggle("hidden", mode !== "update");
 
-            capturePhoto() {
-                const video = document.getElementById('camera-video');
-                const canvas = document.getElementById('photo-canvas');
-                
-                if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    
-                    // Compress to 0.7 quality jpeg
-                    this.data.currentImageBase64 = canvas.toDataURL('image/jpeg', 0.7);
-                    
-                    this.stopCamera();
-                    this.updatePhotoUI();
-                }
-            },
+      if (product.imageSafe) {
+        $("photo-preview").src = product.imageSafe;
+        $("photo-wrap").classList.remove("hidden");
+        $("photo-button").classList.add("hidden");
+      } else {
+        resetPhotoUI();
+      }
 
-            // --- Utilities ---
-            notify(msg, type = 'success') {
-                const notif = document.getElementById('notification');
-                notif.textContent = msg;
-                notif.className = `fixed top-20 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-xl z-50 text-white font-medium text-sm transition-all duration-300 animate-[bounce_1s] ${type === 'error' ? 'bg-red-600' : 'bg-green-600'}`;
-                notif.classList.remove('hidden');
-                setTimeout(() => {
-                    notif.classList.add('hidden');
-                }, 3000);
-            }
-        };
+      $("editor-section").scrollIntoView({ behavior: "smooth", block: "start" });
+      lucide.createIcons();
+    }
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            app.init();
+    function closeEditor() {
+      $("editor-section").classList.add("hidden");
+      state.currentPhoto = null;
+      state.removeImage = false;
+    }
+
+    async function saveProduct() {
+      const sku = normalizeSku($("form-sku").value);
+      const name = $("form-name").value.trim();
+      const stock = parseInt($("form-stock").value, 10);
+      const price = Number($("form-price").value);
+
+      if (!sku) return toast("Falta SKU", "error");
+      if (!name) return toast("Falta nombre", "error");
+      if (!Number.isFinite(stock) || stock < 0) return toast("Stock invalido", "error");
+      if (!Number.isFinite(price) || price < 0) return toast("Precio invalido", "error");
+
+      const payload = {
+        action: state.mode === "create" ? "create" : "update",
+        sku,
+        name,
+        stock,
+        price,
+        imageBase64: state.currentPhoto,
+        removeImage: state.removeImage
+      };
+
+      setBusy($("save-button"), true, "Guardando...");
+      try {
+        const json = await post(payload);
+        if (!["success", "updated"].includes(json.status)) throw new Error(json.error || "No se pudo guardar");
+        toast(state.mode === "create" ? "Producto creado" : "Producto actualizado");
+        closeEditor();
+        await loadInventory(false);
+      } catch (error) {
+        console.error(error);
+        toast(error.message || "No se pudo guardar", "error");
+      } finally {
+        setBusy($("save-button"), false);
+      }
+    }
+
+    async function addOne() {
+      const sku = normalizeSku($("form-sku").value);
+      setBusy($("add-one-button"), true, "Sumando...");
+      try {
+        const json = await post({ action: "add", sku, stock: 1 });
+        if (json.status !== "updated") throw new Error(json.error || "No se pudo sumar");
+        toast("Stock +1");
+        closeEditor();
+        await loadInventory(false);
+      } catch (error) {
+        console.error(error);
+        toast(error.message || "No se pudo sumar", "error");
+      } finally {
+        setBusy($("add-one-button"), false);
+      }
+    }
+
+    async function deleteProduct() {
+      const sku = normalizeSku($("form-sku").value);
+      const name = $("form-name").value.trim();
+      if (!confirm(`Eliminar "${name}"?\nSKU: ${sku}`)) return;
+
+      setBusy($("delete-button"), true, "Eliminando...");
+      try {
+        const json = await post({ action: "delete", sku });
+        if (json.status !== "deleted") throw new Error(json.error || "No se pudo eliminar");
+        toast("Producto eliminado");
+        closeEditor();
+        await loadInventory(false);
+      } catch (error) {
+        console.error(error);
+        toast(error.message || "No se pudo eliminar", "error");
+      } finally {
+        setBusy($("delete-button"), false);
+      }
+    }
+
+    async function post(payload) {
+      const response = await fetch(state.apiUrl, {
+        method: "POST",
+        redirect: "follow",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+      return response.json();
+    }
+
+    async function startCamera(mode) {
+      document.body.classList.add("camera-open");
+
+      if (mode === "scan") {
+        $("camera-video").classList.add("hidden");
+        $("photo-controls").classList.add("hidden");
+        $("qr-reader").classList.remove("hidden");
+
+        if (!window.Html5Qrcode) {
+          toast("No cargo el escaner", "error");
+          stopCamera();
+          return;
+        }
+
+        state.qr = new Html5Qrcode("qr-reader");
+        try {
+          await state.qr.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, text => {
+            $("sku-input").value = normalizeSku(text);
+            stopCamera();
+            checkSku();
+          }, () => {});
+        } catch (error) {
+          console.error(error);
+          toast("No se pudo abrir camara", "error");
+          stopCamera();
+        }
+        return;
+      }
+
+      $("qr-reader").classList.add("hidden");
+      $("camera-video").classList.remove("hidden");
+      $("photo-controls").classList.remove("hidden");
+
+      try {
+        state.stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } }
         });
-    </script>
+        $("camera-video").srcObject = state.stream;
+      } catch (error) {
+        console.error(error);
+        toast("No se pudo abrir camara", "error");
+        stopCamera();
+      }
+    }
+
+    function stopCamera() {
+      document.body.classList.remove("camera-open");
+      if (state.stream) {
+        state.stream.getTracks().forEach(track => track.stop());
+        state.stream = null;
+      }
+      if (state.qr) {
+        state.qr.stop().then(() => state.qr.clear()).catch(() => {});
+        state.qr = null;
+      }
+    }
+
+    function capturePhoto() {
+      const video = $("camera-video");
+      if (!video.videoWidth || !video.videoHeight) return toast("Camara cargando", "error");
+
+      const canvas = $("photo-canvas");
+      const maxSide = 1400;
+      const scale = Math.min(1, maxSide / Math.max(video.videoWidth, video.videoHeight));
+      canvas.width = Math.round(video.videoWidth * scale);
+      canvas.height = Math.round(video.videoHeight * scale);
+      canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      state.currentPhoto = canvas.toDataURL("image/jpeg", 0.82);
+      state.removeImage = false;
+      $("photo-preview").src = state.currentPhoto;
+      $("photo-wrap").classList.remove("hidden");
+      $("photo-button").classList.add("hidden");
+      stopCamera();
+    }
+
+    function clearPhoto() {
+      state.currentPhoto = null;
+      state.removeImage = true;
+      resetPhotoUI();
+    }
+
+    function resetPhotoUI() {
+      $("photo-preview").src = "";
+      $("photo-wrap").classList.add("hidden");
+      $("photo-button").classList.remove("hidden");
+    }
+
+    function openSettings() {
+      $("api-url-input").value = state.apiUrl;
+      document.body.classList.add("settings-open");
+    }
+
+    function closeSettings() {
+      document.body.classList.remove("settings-open");
+    }
+
+    function saveSettings() {
+      const url = $("api-url-input").value.trim();
+      if (!url.startsWith("https://script.google.com/")) return toast("URL invalida", "error");
+      state.apiUrl = url;
+      localStorage.setItem(API_URL_KEY, url);
+      closeSettings();
+      toast("Configuracion guardada");
+      loadInventory(true);
+    }
+
+    function renderStats() {
+      $("stat-products").textContent = state.products.length;
+      $("stat-stock").textContent = state.products.reduce((sum, p) => sum + Math.max(0, p.stock), 0);
+      $("stat-empty").textContent = state.products.filter(p => p.stock <= 0).length;
+    }
+
+    function normalizeProduct(product) {
+      return {
+        name: String(product.name || "").trim(),
+        sku: normalizeSku(product.sku),
+        stock: Number(product.stock || 0),
+        price: Number(product.price || 0),
+        image: String(product.image || ""),
+        imageSafe: imageUrl(product.image)
+      };
+    }
+
+    function emptyProduct(sku) {
+      return { sku, name: "", stock: 1, price: 0, image: "", imageSafe: "" };
+    }
+
+    function imageUrl(link) {
+      const value = String(link || "").trim();
+      if (!value) return "";
+      const match = value.match(/id=([a-zA-Z0-9_-]{20,})/) || value.match(/\/d\/([a-zA-Z0-9_-]{20,})\//);
+      if (match) return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w800`;
+      return value;
+    }
+
+    function imagePlaceholder() {
+      const div = document.createElement("div");
+      div.className = "w-full h-full bg-slate-100 text-slate-300 grid place-items-center";
+      div.innerHTML = '<i data-lucide="image-off" class="w-6 h-6"></i>';
+      return div;
+    }
+
+    function setBusy(button, busy, label) {
+      if (!button) return;
+      button.disabled = busy;
+      if (busy) {
+        button.dataset.html = button.innerHTML;
+        button.innerHTML = `<div class="loader !w-5 !h-5 !border-2"></div>${label ? `<span>${label}</span>` : ""}`;
+      } else if (button.dataset.html) {
+        button.innerHTML = button.dataset.html;
+      }
+      lucide.createIcons();
+    }
+
+    function normalizeSku(value) {
+      return String(value || "").trim().toUpperCase();
+    }
+
+    function normalizeText(value) {
+      return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    }
+
+    function formatPrice(value) {
+      return Number(value || 0).toLocaleString("es-MX", { style: "currency", currency: "MXN" });
+    }
+
+    function escapeHtml(value) {
+      return String(value || "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
+    }
+
+    function toast(message, type = "success") {
+      const el = $("toast");
+      el.textContent = message;
+      el.className = `fixed top-24 left-1/2 -translate-x-1/2 z-[80] max-w-[92vw] rounded-full px-5 py-3 text-sm font-bold text-white shadow-2xl text-center ${type === "error" ? "bg-red-600" : "bg-emerald-600"}`;
+      el.classList.remove("hidden");
+      clearTimeout(toast.timer);
+      toast.timer = setTimeout(() => el.classList.add("hidden"), 3000);
+    }
+  </script>
 </body>
 </html>
