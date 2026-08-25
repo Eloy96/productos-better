@@ -2,221 +2,463 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#047857">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#087f4f">
   <title>Inventario Better</title>
-
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-
+  <script defer src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    html { -webkit-text-size-adjust: 100%; }
-    body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; }
-    button, input { touch-action: manipulation; }
-    .loader {
-      width: 22px; height: 22px; border-radius: 999px;
-      border: 3px solid rgba(255,255,255,.35); border-top-color: #fff;
-      animation: spin .75s linear infinite;
+    :root {
+      --green:#087f4f;
+      --green-dark:#05663f;
+      --green-soft:#eaf7f0;
+      --blue:#2563eb;
+      --red:#dc2626;
+      --text:#16202a;
+      --muted:#64748b;
+      --line:#dfe6ec;
+      --bg:#f4f7f9;
+      --white:#ffffff;
+      --shadow:0 8px 24px rgba(15,23,42,.08);
+      --radius:18px;
     }
-    .loader-dark { border-color: #d1fae5; border-top-color: #047857; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .fade-in { animation: fadeIn .18s ease-out; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
-    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .safe-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+
+    *, *::before, *::after { box-sizing:border-box; min-width:0; }
+    html, body { margin:0; width:100%; max-width:100%; overflow-x:hidden; }
+    html { -webkit-text-size-adjust:100%; background:var(--bg); }
+    body {
+      min-height:100vh;
+      min-height:100dvh;
+      background:var(--bg);
+      color:var(--text);
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+      -webkit-tap-highlight-color:transparent;
+      overscroll-behavior-y:contain;
+    }
+    button, input { font:inherit; }
+    button { touch-action:manipulation; cursor:pointer; }
+    input { appearance:none; -webkit-appearance:none; }
+    .hidden { display:none !important; }
+    .flex { display:flex !important; }
+
+    .app-header {
+      position:sticky;
+      top:0;
+      z-index:30;
+      width:100%;
+      background:var(--green);
+      color:#fff;
+      box-shadow:0 3px 14px rgba(0,0,0,.12);
+    }
+    .header-inner {
+      width:100%;
+      max-width:720px;
+      margin:0 auto;
+      min-height:76px;
+      padding:10px 14px;
+      padding-top:max(10px, env(safe-area-inset-top));
+      display:flex;
+      align-items:center;
+      gap:11px;
+    }
+    .brand-icon {
+      width:46px;
+      height:46px;
+      flex:0 0 46px;
+      border-radius:14px;
+      background:rgba(255,255,255,.14);
+      display:grid;
+      place-items:center;
+      font-size:24px;
+    }
+    .brand { flex:1 1 auto; overflow:hidden; }
+    .brand h1 { margin:0; font-size:21px; line-height:1.12; font-weight:850; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .brand p { margin:4px 0 0; font-size:13px; color:#d1fae5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .icon-button {
+      width:46px;
+      height:46px;
+      flex:0 0 46px;
+      border:0;
+      border-radius:14px;
+      background:rgba(255,255,255,.14);
+      color:#fff;
+      font-size:25px;
+      display:grid;
+      place-items:center;
+    }
+
+    main {
+      width:100%;
+      max-width:720px;
+      margin:0 auto;
+      padding:14px;
+      padding-bottom:max(24px, env(safe-area-inset-bottom));
+    }
+
+    .card {
+      width:100%;
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:16px;
+    }
+    .home-card { margin-bottom:12px; }
+    .home-title { margin:0; font-size:20px; font-weight:850; }
+    .home-subtitle { margin:4px 0 14px; color:var(--muted); font-size:15px; }
+
+    .sku-row { display:grid; grid-template-columns:minmax(0,1fr) 112px; gap:9px; width:100%; }
+    .input {
+      display:block;
+      width:100%;
+      max-width:100%;
+      height:54px;
+      border:2px solid var(--line);
+      border-radius:13px;
+      background:#fff;
+      color:var(--text);
+      padding:0 13px;
+      font-size:17px;
+      outline:none;
+      transition:border-color .15s, box-shadow .15s;
+    }
+    .input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(8,127,79,.12); }
+    .input:disabled { background:#f1f5f9; color:#64748b; }
+    .sku-input { text-align:center; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:20px; font-weight:850; text-transform:uppercase; }
+
+    .button {
+      border:0;
+      border-radius:13px;
+      min-height:54px;
+      padding:0 14px;
+      font-weight:850;
+      font-size:16px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      text-align:center;
+      transition:transform .08s, opacity .15s;
+    }
+    .button:active { transform:scale(.985); }
+    .button:disabled { opacity:.6; cursor:default; }
+    .button-green { background:var(--green); color:#fff; }
+    .button-green:active { background:var(--green-dark); }
+    .button-dark { background:#17212b; color:#fff; }
+    .button-blue { background:var(--blue); color:#fff; }
+    .button-red-soft { background:#fff1f2; color:#b91c1c; border:1px solid #fecdd3; }
+    .button-gray { background:#eef2f6; color:#334155; }
+    .full-button { width:100%; margin-top:10px; }
+
+    .stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:12px 0; }
+    .stat { background:#fff; border:1px solid var(--line); border-radius:14px; padding:11px 5px; text-align:center; }
+    .stat-label { margin:0; color:var(--muted); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.02em; }
+    .stat-value { margin:3px 0 0; font-size:23px; line-height:1; font-weight:900; }
+    .stat-value.green { color:var(--green); }
+    .stat-value.red { color:var(--red); }
+
+    .inventory-tools { display:grid; grid-template-columns:minmax(0,1fr) 54px; gap:8px; margin:12px 0 5px; }
+    .search-wrap { position:relative; }
+    .search-wrap .input { padding-left:42px; height:50px; font-size:16px; }
+    .search-mark { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:18px; pointer-events:none; }
+    .refresh-button { width:54px; height:50px; min-height:50px; padding:0; }
+    .inventory-hint { min-height:18px; margin:0 3px 9px; color:var(--muted); font-size:12px; }
+    .loading { padding:24px 0; text-align:center; color:var(--muted); font-size:14px; }
+
+    .inventory-list { display:grid; grid-template-columns:1fr; gap:8px; }
+    .inventory-card {
+      width:100%;
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:15px;
+      padding:10px;
+      text-align:left;
+      display:grid;
+      grid-template-columns:58px minmax(0,1fr) 58px;
+      gap:10px;
+      align-items:center;
+      box-shadow:0 2px 9px rgba(15,23,42,.04);
+    }
+    .inventory-card:active { transform:scale(.992); }
+    .inventory-thumb { width:58px; height:58px; border-radius:11px; border:1px solid #eef2f7; overflow:hidden; background:#f8fafc; display:grid; place-items:center; }
+    .inventory-thumb img { width:100%; height:100%; object-fit:contain; display:block; }
+    .image-placeholder { width:100%; height:100%; display:grid; place-items:center; color:#cbd5e1; font-size:24px; background:#f8fafc; }
+    .inventory-name { margin:0; font-size:15px; font-weight:850; line-height:1.22; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .inventory-sku { margin:4px 0 2px; color:var(--muted); font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; }
+    .inventory-price { margin:0; color:var(--green); font-size:15px; font-weight:850; }
+    .inventory-stock { text-align:center; }
+    .inventory-stock strong { display:block; font-size:27px; line-height:1; color:var(--blue); }
+    .inventory-stock strong.zero { color:var(--red); }
+    .inventory-stock span { display:block; margin-top:3px; color:#94a3b8; font-size:10px; font-weight:800; text-transform:uppercase; }
+    .empty-state { padding:30px 16px; text-align:center; border:1px solid var(--line); border-radius:15px; background:#fff; color:var(--muted); }
+
+    .editor-card { padding:14px; overflow:hidden; }
+    .editor-head { width:100%; display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+    .back-button { width:46px; min-width:46px; height:46px; min-height:46px; padding:0; border-radius:50%; font-size:23px; }
+    .editor-head-text { flex:1 1 auto; overflow:hidden; }
+    .editor-title { margin:0; font-size:22px; line-height:1.15; font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .editor-subtitle { margin:4px 0 0; color:var(--muted); font-size:13px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    .photo-area { width:100%; margin-bottom:14px; }
+    .photo-button {
+      width:100%;
+      height:clamp(170px, 30vh, 230px);
+      min-height:170px;
+      max-height:230px;
+      border:2px dashed #cbd5e1;
+      border-radius:16px;
+      background:#f8fafc;
+      color:#475569;
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:7px;
+    }
+    .photo-button .camera-symbol { font-size:43px; line-height:1; }
+    .photo-button strong { font-size:20px; }
+    .photo-button small { font-size:13px; color:#94a3b8; font-weight:600; }
+    .photo-wrap { position:relative; width:100%; height:clamp(190px, 34vh, 250px); border:1px solid var(--line); border-radius:16px; overflow:hidden; background:#f8fafc; }
+    .photo-wrap img { display:block; width:100%; height:100%; object-fit:contain; background:#fff; }
+    .clear-photo { position:absolute; top:9px; right:9px; width:44px; height:44px; min-height:44px; border-radius:50%; padding:0; background:var(--red); color:#fff; font-size:20px; }
+
+    .field { width:100%; margin-bottom:13px; }
+    .field label { display:block; margin:0 0 6px; color:#475569; font-size:15px; font-weight:850; }
+    .stock-stepper { display:grid; grid-template-columns:58px minmax(0,1fr) 58px; gap:8px; width:100%; }
+    .stock-button { height:60px; min-height:60px; padding:0; font-size:31px; border-radius:13px; }
+    .stock-input { height:60px; text-align:center; font-size:27px; font-weight:900; }
+    .price-wrap { position:relative; width:100%; }
+    .price-prefix { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:24px; font-weight:900; pointer-events:none; }
+    .price-input { height:60px; padding-left:38px; font-size:23px; font-weight:900; }
+
+    .save-zone {
+      position:sticky;
+      bottom:0;
+      z-index:5;
+      margin:2px -14px -14px;
+      padding:13px 14px max(14px, env(safe-area-inset-bottom));
+      background:linear-gradient(to bottom, rgba(255,255,255,.88), #fff 24%);
+      border-top:1px solid #eef2f6;
+    }
+    .save-button { width:100%; min-height:60px; font-size:19px; box-shadow:0 8px 20px rgba(8,127,79,.18); }
+    .existing-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:9px; }
+    .existing-actions .button { min-height:50px; font-size:15px; }
+    .save-help { margin:9px 4px 0; text-align:center; color:#94a3b8; font-size:12px; }
+
+    .modal {
+      position:fixed;
+      inset:0;
+      z-index:60;
+      width:100%;
+      max-width:100%;
+      background:rgba(15,23,42,.58);
+      align-items:center;
+      justify-content:center;
+      padding:14px;
+    }
+    .settings-card { width:min(100%,520px); max-height:90dvh; overflow:auto; background:#fff; border-radius:18px; padding:16px; box-shadow:0 20px 60px rgba(0,0,0,.22); }
+    .settings-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
+    .settings-head h2 { margin:0; font-size:21px; }
+    .settings-head p { margin:3px 0 0; color:var(--muted); font-size:13px; }
+    .close-settings { width:42px; height:42px; min-height:42px; padding:0; border-radius:50%; font-size:21px; }
+
+    .camera-modal {
+      position:fixed;
+      inset:0;
+      z-index:80;
+      width:100vw;
+      max-width:100vw;
+      height:100vh;
+      height:100dvh;
+      background:#000;
+      flex-direction:column;
+      overflow:hidden;
+    }
+    .camera-stage { position:relative; flex:1 1 auto; min-height:0; width:100%; overflow:hidden; }
+    .camera-stage video, #qr-reader { position:absolute; inset:0; width:100% !important; height:100% !important; object-fit:cover; }
+    #qr-reader { background:#000; }
+    #qr-reader video { object-fit:cover !important; }
+    .camera-label { position:absolute; z-index:3; top:max(14px, env(safe-area-inset-top)); left:14px; right:68px; border-radius:13px; background:rgba(0,0,0,.52); color:#fff; padding:10px 12px; text-align:center; font-size:15px; font-weight:750; backdrop-filter:blur(5px); }
+    .close-camera { position:absolute; z-index:4; top:max(14px, env(safe-area-inset-top)); right:14px; width:46px; height:46px; min-height:46px; border:0; border-radius:50%; background:rgba(255,255,255,.2); color:#fff; font-size:24px; }
+    .photo-controls { flex:0 0 112px; height:112px; background:#000; align-items:center; justify-content:center; padding-bottom:env(safe-area-inset-bottom); }
+    .capture-button { width:72px; height:72px; border-radius:50%; background:#fff; border:6px solid #94a3b8; }
+
+    .toast {
+      position:fixed;
+      z-index:100;
+      top:max(86px, calc(env(safe-area-inset-top) + 72px));
+      left:50%;
+      transform:translateX(-50%);
+      width:calc(100% - 28px);
+      max-width:520px;
+      border-radius:15px;
+      padding:13px 15px;
+      color:#fff;
+      background:var(--green);
+      box-shadow:0 14px 35px rgba(0,0,0,.22);
+      text-align:center;
+      font-size:15px;
+      font-weight:850;
+    }
+    .toast.error { background:var(--red); }
+
+    .mini-spinner { width:20px; height:20px; border:3px solid rgba(255,255,255,.35); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; flex:0 0 20px; }
+    .dark-spinner { border-color:#d1fae5; border-top-color:var(--green); }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    @media (max-width:380px) {
+      .header-inner { padding-left:10px; padding-right:10px; }
+      .brand-icon { display:none; }
+      main { padding:10px; }
+      .card, .editor-card { padding:13px; }
+      .sku-row { grid-template-columns:minmax(0,1fr) 96px; }
+      .button { font-size:15px; padding-left:10px; padding-right:10px; }
+      .stats { gap:5px; }
+      .stat-value { font-size:21px; }
+      .stock-stepper { grid-template-columns:54px minmax(0,1fr) 54px; gap:6px; }
+      .save-zone { margin-left:-13px; margin-right:-13px; margin-bottom:-13px; padding-left:13px; padding-right:13px; }
+    }
+
+    @media (min-width:760px) {
+      main { padding-top:20px; }
+      .inventory-list { grid-template-columns:1fr 1fr; }
+      .photo-button, .photo-wrap { max-height:250px; }
+    }
   </style>
 </head>
-<body class="min-h-screen bg-slate-100 text-slate-900">
-
-  <header class="sticky top-0 z-30 bg-emerald-700 text-white shadow-md">
-    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
-      <div class="w-11 h-11 rounded-2xl bg-white/15 grid place-items-center shrink-0">
-        <i data-lucide="package-search" class="w-6 h-6"></i>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand-icon" aria-hidden="true">📦</div>
+      <div class="brand">
+        <h1>Inventario Better</h1>
+        <p id="status-label">Preparando inventario...</p>
       </div>
-      <div class="min-w-0">
-        <h1 class="font-black text-xl leading-tight">Inventario Better</h1>
-        <p id="status-label" class="text-sm text-emerald-100">Preparando inventario...</p>
-      </div>
-      <button id="settings-button" type="button" aria-label="Configuración" class="ml-auto w-12 h-12 rounded-full grid place-items-center active:bg-white/15">
-        <i data-lucide="settings" class="w-6 h-6"></i>
-      </button>
+      <button id="settings-button" class="icon-button" type="button" aria-label="Configuración">⚙</button>
     </div>
   </header>
 
-  <main class="max-w-5xl mx-auto px-3 sm:px-4 py-4 safe-bottom">
-
-    <section id="home-section" class="fade-in">
-      <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-4 mb-4">
-        <p class="font-black text-lg mb-1">¿Qué producto vas a registrar?</p>
-        <p class="text-sm text-slate-500 mb-4">Escanea el código o escríbelo.</p>
-
-        <div class="flex gap-2">
-          <input id="sku-input" autocomplete="off" autocapitalize="characters" spellcheck="false"
-            class="min-w-0 flex-1 h-14 rounded-xl border-2 border-slate-200 px-3 text-center text-xl font-black font-mono uppercase outline-none focus:border-emerald-600 bg-white"
-            placeholder="SKU">
-          <button id="scan-button" type="button" class="w-16 h-14 rounded-xl bg-slate-900 text-white grid place-items-center active:scale-95" aria-label="Escanear código">
-            <i data-lucide="scan-line" class="w-7 h-7"></i>
-          </button>
+  <main>
+    <section id="home-section">
+      <div class="card home-card">
+        <h2 class="home-title">Registrar producto</h2>
+        <p class="home-subtitle">Escanea el código o escríbelo.</p>
+        <div class="sku-row">
+          <input id="sku-input" class="input sku-input" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="SKU" aria-label="Código SKU">
+          <button id="scan-button" class="button button-dark" type="button">📷 Escanear</button>
         </div>
-
-        <button id="search-button" type="button" class="mt-3 w-full h-14 rounded-xl bg-emerald-600 text-white text-lg font-black flex items-center justify-center gap-2 shadow-md active:scale-[.99] disabled:opacity-60">
-          <i data-lucide="arrow-right-circle" class="w-6 h-6"></i>
-          <span>Continuar</span>
-        </button>
+        <button id="search-button" class="button button-green full-button" type="button">Continuar →</button>
       </div>
 
-      <section class="grid grid-cols-3 gap-2 mb-4">
-        <div class="rounded-xl bg-white border border-slate-200 p-3 text-center">
-          <p class="text-[11px] font-black uppercase text-slate-500">Productos</p>
-          <p id="stat-products" class="text-2xl font-black">0</p>
-        </div>
-        <div class="rounded-xl bg-white border border-slate-200 p-3 text-center">
-          <p class="text-[11px] font-black uppercase text-slate-500">Piezas</p>
-          <p id="stat-stock" class="text-2xl font-black text-emerald-700">0</p>
-        </div>
-        <div class="rounded-xl bg-white border border-slate-200 p-3 text-center">
-          <p class="text-[11px] font-black uppercase text-slate-500">Agotados</p>
-          <p id="stat-empty" class="text-2xl font-black text-red-600">0</p>
-        </div>
-      </section>
-
-      <section class="mb-3">
-        <div class="flex items-center gap-2 mb-2">
-          <div class="relative flex-1">
-            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"></i>
-            <input id="filter-input" autocomplete="off" class="w-full h-12 rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-base outline-none focus:border-emerald-600" placeholder="Buscar en inventario">
-          </div>
-          <button id="refresh-button" type="button" class="w-12 h-12 rounded-xl bg-white border border-slate-200 grid place-items-center active:scale-95" aria-label="Actualizar inventario">
-            <i data-lucide="refresh-cw" class="w-5 h-5"></i>
-          </button>
-        </div>
-        <p id="inventory-hint" class="text-xs text-slate-500 px-1"></p>
-      </section>
-
-      <div id="loading-state" class="hidden py-10 text-center">
-        <div class="loader loader-dark mx-auto mb-3"></div>
-        <p class="text-sm text-slate-500">Actualizando inventario...</p>
+      <div class="stats" aria-label="Resumen de inventario">
+        <div class="stat"><p class="stat-label">Productos</p><p id="stat-products" class="stat-value">0</p></div>
+        <div class="stat"><p class="stat-label">Piezas</p><p id="stat-stock" class="stat-value green">0</p></div>
+        <div class="stat"><p class="stat-label">Agotados</p><p id="stat-empty" class="stat-value red">0</p></div>
       </div>
 
-      <div id="inventory-list" class="grid gap-2 md:grid-cols-2"></div>
+      <div class="inventory-tools">
+        <div class="search-wrap">
+          <span class="search-mark">⌕</span>
+          <input id="filter-input" class="input" autocomplete="off" placeholder="Buscar en inventario" aria-label="Buscar en inventario">
+        </div>
+        <button id="refresh-button" class="button button-gray refresh-button" type="button" aria-label="Actualizar inventario">↻</button>
+      </div>
+      <p id="inventory-hint" class="inventory-hint"></p>
+      <div id="loading-state" class="loading hidden"><span class="mini-spinner dark-spinner" style="display:inline-block;vertical-align:middle;margin-right:7px"></span>Actualizando inventario...</div>
+      <div id="inventory-list" class="inventory-list"></div>
     </section>
 
-    <section id="editor-section" class="hidden fade-in">
-      <div class="rounded-2xl bg-white border border-slate-200 shadow-md p-4 sm:p-5">
-        <div class="flex items-start gap-3 mb-4">
-          <button id="back-button" type="button" class="w-12 h-12 rounded-full bg-slate-100 grid place-items-center shrink-0 active:scale-95" aria-label="Regresar">
-            <i data-lucide="arrow-left" class="w-6 h-6"></i>
-          </button>
-          <div class="min-w-0 pt-1">
-            <h2 id="editor-title" class="font-black text-2xl leading-tight">Nuevo producto</h2>
-            <p id="editor-subtitle" class="text-sm text-slate-500 font-mono mt-1"></p>
+    <section id="editor-section" class="hidden">
+      <div class="card editor-card">
+        <div class="editor-head">
+          <button id="back-button" class="button button-gray back-button" type="button" aria-label="Regresar">←</button>
+          <div class="editor-head-text">
+            <h2 id="editor-title" class="editor-title">Nuevo producto</h2>
+            <p id="editor-subtitle" class="editor-subtitle"></p>
           </div>
         </div>
 
-        <div class="grid gap-5 lg:grid-cols-[320px_1fr]">
-          <div>
-            <div id="photo-wrap" class="hidden relative rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden">
-              <img id="photo-preview" class="w-full aspect-square object-contain bg-white" alt="Foto del producto">
-              <button id="clear-photo" type="button" class="absolute top-3 right-3 w-12 h-12 rounded-full bg-red-600 text-white grid place-items-center shadow-lg active:scale-95" aria-label="Quitar foto">
-                <i data-lucide="trash-2" class="w-6 h-6"></i>
-              </button>
-            </div>
-
-            <button id="photo-button" type="button" class="w-full aspect-[4/3] rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 text-slate-600 grid place-items-center active:bg-slate-100">
-              <span class="flex flex-col items-center gap-2 font-black text-lg">
-                <i data-lucide="camera" class="w-10 h-10"></i>
-                Tomar foto
-                <small class="font-medium text-sm text-slate-400">La foto se optimiza automáticamente</small>
-              </span>
-            </button>
+        <div class="photo-area">
+          <div id="photo-wrap" class="photo-wrap hidden">
+            <img id="photo-preview" src="" alt="Foto del producto">
+            <button id="clear-photo" class="button clear-photo" type="button" aria-label="Quitar foto">🗑</button>
           </div>
+          <button id="photo-button" class="photo-button" type="button">
+            <span class="camera-symbol" aria-hidden="true">📷</span>
+            <strong>Tomar foto</strong>
+            <small>Foto opcional · se optimiza automáticamente</small>
+          </button>
+        </div>
 
-          <div class="space-y-4">
-            <div>
-              <label class="text-sm font-black text-slate-600">Código SKU</label>
-              <input id="form-sku" class="mt-1 w-full h-14 rounded-xl border-2 border-slate-200 px-3 text-lg font-mono font-black uppercase outline-none focus:border-emerald-600 disabled:bg-slate-100 disabled:text-slate-500">
-            </div>
+        <div class="field">
+          <label for="form-sku">Código SKU</label>
+          <input id="form-sku" class="input sku-input" autocomplete="off" spellcheck="false">
+        </div>
 
-            <div>
-              <label class="text-sm font-black text-slate-600">Nombre del producto</label>
-              <input id="form-name" autocomplete="off" class="mt-1 w-full h-14 rounded-xl border-2 border-slate-200 px-3 text-lg outline-none focus:border-emerald-600" placeholder="Ej. Sartén Carbon Pro">
-            </div>
+        <div class="field">
+          <label for="form-name">Nombre del producto</label>
+          <input id="form-name" class="input" autocomplete="off" placeholder="Ej. Sartén Carbon Pro">
+        </div>
 
-            <div>
-              <label class="text-sm font-black text-slate-600">Cantidad en existencia</label>
-              <div class="mt-1 grid grid-cols-[64px_1fr_64px] gap-2">
-                <button id="stock-minus" type="button" class="h-16 rounded-xl bg-slate-200 text-slate-800 grid place-items-center active:scale-95" aria-label="Restar una pieza">
-                  <i data-lucide="minus" class="w-8 h-8"></i>
-                </button>
-                <input id="form-stock" type="number" min="0" inputmode="numeric" class="h-16 rounded-xl border-2 border-slate-200 px-3 text-center text-3xl font-black outline-none focus:border-emerald-600">
-                <button id="stock-plus" type="button" class="h-16 rounded-xl bg-blue-600 text-white grid place-items-center active:scale-95" aria-label="Sumar una pieza">
-                  <i data-lucide="plus" class="w-8 h-8"></i>
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label class="text-sm font-black text-slate-600">Precio de venta</label>
-              <div class="mt-1 relative">
-                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-slate-400">$</span>
-                <input id="form-price" type="number" min="0" step="0.01" inputmode="decimal" class="w-full h-16 rounded-xl border-2 border-slate-200 pl-11 pr-3 text-2xl font-black outline-none focus:border-emerald-600" placeholder="0.00">
-              </div>
-            </div>
-
-            <button id="save-button" type="button" class="w-full h-16 rounded-xl bg-emerald-600 text-white text-xl font-black flex items-center justify-center gap-2 shadow-lg active:scale-[.99] disabled:opacity-60">
-              <i data-lucide="save" class="w-6 h-6"></i>
-              <span>Guardar producto</span>
-            </button>
-
-            <div id="existing-actions" class="hidden grid grid-cols-2 gap-2 pt-1">
-              <button id="add-one-button" type="button" class="h-14 rounded-xl bg-blue-600 text-white font-black flex items-center justify-center gap-2 disabled:opacity-60">
-                <i data-lucide="plus-circle" class="w-5 h-5"></i> Agregar 1
-              </button>
-              <button id="delete-button" type="button" class="h-14 rounded-xl bg-red-50 text-red-700 border border-red-200 font-black flex items-center justify-center gap-2 disabled:opacity-60">
-                <i data-lucide="trash-2" class="w-5 h-5"></i> Eliminar
-              </button>
-            </div>
-
-            <p id="save-help" class="text-center text-xs text-slate-400">Al guardar podrás registrar inmediatamente el siguiente producto.</p>
+        <div class="field">
+          <label for="form-stock">Cantidad en existencia</label>
+          <div class="stock-stepper">
+            <button id="stock-minus" class="button button-gray stock-button" type="button" aria-label="Restar una pieza">−</button>
+            <input id="form-stock" class="input stock-input" type="number" min="0" inputmode="numeric" value="1">
+            <button id="stock-plus" class="button button-blue stock-button" type="button" aria-label="Sumar una pieza">+</button>
           </div>
+        </div>
+
+        <div class="field">
+          <label for="form-price">Precio de venta</label>
+          <div class="price-wrap">
+            <span class="price-prefix">$</span>
+            <input id="form-price" class="input price-input" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
+          </div>
+        </div>
+
+        <div class="save-zone">
+          <button id="save-button" class="button button-green save-button" type="button">Guardar producto</button>
+          <div id="existing-actions" class="existing-actions hidden">
+            <button id="add-one-button" class="button button-blue" type="button">+1 pieza</button>
+            <button id="delete-button" class="button button-red-soft" type="button">Eliminar</button>
+          </div>
+          <p class="save-help">Después de guardar podrás registrar el siguiente producto.</p>
         </div>
       </div>
     </section>
   </main>
 
-  <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/45 p-4 items-center justify-center">
-    <section class="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
-      <div class="flex items-center justify-between mb-4">
+  <div id="settings-modal" class="modal hidden">
+    <section class="settings-card">
+      <div class="settings-head">
         <div>
-          <h2 class="font-black text-xl">Configuración</h2>
-          <p class="text-sm text-slate-500">Normalmente no necesitas cambiar esto.</p>
+          <h2>Configuración</h2>
+          <p>Normalmente no necesitas cambiar esto.</p>
         </div>
-        <button id="close-settings" type="button" class="w-11 h-11 rounded-full bg-slate-100 grid place-items-center">
-          <i data-lucide="x" class="w-6 h-6"></i>
-        </button>
+        <button id="close-settings" class="button button-gray close-settings" type="button" aria-label="Cerrar">×</button>
       </div>
-      <label class="text-sm font-black text-slate-600">URL de Google Apps Script</label>
-      <input id="api-url-input" class="mt-1 w-full rounded-xl border-2 border-slate-200 p-3 text-xs font-mono outline-none focus:border-emerald-600">
-      <button id="save-settings" type="button" class="mt-4 w-full h-14 rounded-xl bg-emerald-600 text-white font-black text-lg">Guardar configuración</button>
+      <div class="field">
+        <label for="api-url-input">URL de Google Apps Script</label>
+        <input id="api-url-input" class="input" style="font-size:13px" autocomplete="off">
+      </div>
+      <button id="save-settings" class="button button-green full-button" type="button">Guardar configuración</button>
     </section>
   </div>
 
-  <div id="camera-modal" class="hidden fixed inset-0 z-[60] bg-black flex-col">
-    <div class="relative flex-1 min-h-0">
-      <video id="camera-video" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
-      <div id="qr-reader" class="absolute inset-0 hidden"></div>
-      <div id="camera-label" class="absolute top-4 left-4 right-20 rounded-xl bg-black/45 backdrop-blur px-4 py-3 text-white font-bold text-center">Apunta al código</div>
-      <button id="close-camera" type="button" class="absolute top-4 right-4 w-12 h-12 rounded-full bg-white/20 text-white grid place-items-center backdrop-blur" aria-label="Cerrar cámara">
-        <i data-lucide="x" class="w-7 h-7"></i>
-      </button>
+  <div id="camera-modal" class="camera-modal hidden">
+    <div class="camera-stage">
+      <video id="camera-video" autoplay playsinline muted class="hidden"></video>
+      <div id="qr-reader" class="hidden"></div>
+      <div id="camera-label" class="camera-label">Apunta al código del producto</div>
+      <button id="close-camera" class="close-camera" type="button" aria-label="Cerrar cámara">×</button>
     </div>
-    <div id="photo-controls" class="hidden h-28 bg-black items-center justify-center safe-bottom">
-      <button id="capture-button" type="button" class="w-20 h-20 rounded-full bg-white border-[6px] border-slate-400"></button>
+    <div id="photo-controls" class="photo-controls hidden">
+      <button id="capture-button" class="capture-button" type="button" aria-label="Tomar foto"></button>
     </div>
   </div>
 
-  <div id="toast" role="status" class="hidden fixed top-24 left-1/2 -translate-x-1/2 z-[80] w-[calc(100%-2rem)] max-w-md rounded-2xl px-5 py-4 text-base font-black text-white shadow-2xl text-center"></div>
+  <div id="toast" class="toast hidden" role="status"></div>
   <canvas id="photo-canvas" class="hidden"></canvas>
 
 <script>
@@ -224,9 +466,9 @@
   'use strict';
 
   const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbwczNs-lS1aUyJxpvSMuYGekx9zSHxNwWONxw3PdkLhTIbG3D6LqE7SLx4mgl-SwGV5/exec';
-  const API_URL_KEY = 'productos_better_api_url_v3';
-  const CACHE_KEY = 'productos_better_inventory_cache_v3';
-  const CACHE_TIME_KEY = 'productos_better_inventory_cache_time_v3';
+  const API_URL_KEY = 'productos_better_api_url_v4';
+  const CACHE_KEY = 'productos_better_inventory_cache_v4';
+  const CACHE_TIME_KEY = 'productos_better_inventory_cache_time_v4';
   const REQUEST_TIMEOUT = 18000;
   const MAX_RENDER = 60;
 
@@ -245,7 +487,6 @@
   };
 
   const $ = id => document.getElementById(id);
-
   document.addEventListener('DOMContentLoaded', init);
 
   function init() {
@@ -255,12 +496,7 @@
     renderInventory();
     updateStatus();
     refreshInventory(state.products.length === 0, true);
-    lucide.createIcons();
-
-    window.addEventListener('online', () => {
-      updateStatus('Con conexión');
-      refreshInventory(false, true);
-    });
+    window.addEventListener('online', () => { updateStatus('Con conexión'); refreshInventory(false, true); });
     window.addEventListener('offline', () => updateStatus('Sin internet'));
   }
 
@@ -270,7 +506,6 @@
     $('scan-button').addEventListener('click', () => startCamera('scan'));
     $('filter-input').addEventListener('input', renderInventory);
     $('refresh-button').addEventListener('click', () => refreshInventory(true, false));
-
     $('back-button').addEventListener('click', closeEditor);
     $('photo-button').addEventListener('click', () => startCamera('photo'));
     $('clear-photo').addEventListener('click', clearPhoto);
@@ -279,11 +514,9 @@
     $('save-button').addEventListener('click', saveProduct);
     $('add-one-button').addEventListener('click', addOne);
     $('delete-button').addEventListener('click', deleteProduct);
-
     $('settings-button').addEventListener('click', openSettings);
     $('close-settings').addEventListener('click', closeSettings);
     $('save-settings').addEventListener('click', saveSettings);
-
     $('close-camera').addEventListener('click', stopCamera);
     $('capture-button').addEventListener('click', capturePhoto);
   }
@@ -294,16 +527,12 @@
       if (Array.isArray(cached)) state.products = cached.map(normalizeProduct).filter(p => p.sku);
       const cacheTime = Number(localStorage.getItem(CACHE_TIME_KEY) || 0);
       if (cacheTime) state.lastSync = new Date(cacheTime);
-    } catch (_) {
-      state.products = [];
-    }
+    } catch (_) { state.products = []; }
   }
 
   function saveCache() {
     try {
-      const lightweight = state.products.map(p => ({
-        sku: p.sku, name: p.name, stock: p.stock, price: p.price, image: p.image
-      }));
+      const lightweight = state.products.map(p => ({ sku:p.sku, name:p.name, stock:p.stock, price:p.price, image:p.image }));
       localStorage.setItem(CACHE_KEY, JSON.stringify(lightweight));
       localStorage.setItem(CACHE_TIME_KEY, String(Date.now()));
     } catch (_) {}
@@ -312,13 +541,9 @@
   async function refreshInventory(showLoader = false, silent = false) {
     if (showLoader) $('loading-state').classList.remove('hidden');
     if (!silent) setBusy($('refresh-button'), true, '');
-
     try {
       const json = await getJson(`${state.apiUrl}?action=getAll&limit=1000`, REQUEST_TIMEOUT);
-      if (json.status !== 'success' || !Array.isArray(json.data)) {
-        throw new Error(json.error || 'La lista de productos no llegó correctamente');
-      }
-
+      if (json.status !== 'success' || !Array.isArray(json.data)) throw new Error(json.error || 'La lista de productos no llegó correctamente');
       state.products = json.data.map(normalizeProduct).filter(p => p.sku);
       state.lastSync = new Date();
       saveCache();
@@ -340,60 +565,50 @@
       const haystack = normalizeText(`${product.name} ${product.sku}`);
       return terms.every(term => haystack.includes(term));
     });
-
     renderStats();
     const list = $('inventory-list');
     list.innerHTML = '';
-
     const visible = filtered.slice(0, MAX_RENDER);
     $('inventory-hint').textContent = filtered.length > MAX_RENDER
       ? `Mostrando ${MAX_RENDER} de ${filtered.length}. Escribe para encontrar uno específico.`
       : `${filtered.length} producto${filtered.length === 1 ? '' : 's'}`;
 
     if (visible.length === 0) {
-      list.innerHTML = '<div class="md:col-span-2 rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500">No hay productos para mostrar.</div>';
+      list.innerHTML = '<div class="empty-state">No hay productos para mostrar.</div>';
       return;
     }
-
     const fragment = document.createDocumentFragment();
     visible.forEach(product => fragment.appendChild(inventoryCard(product)));
     list.appendChild(fragment);
-    lucide.createIcons();
   }
 
   function inventoryCard(product) {
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = 'w-full rounded-2xl bg-white border border-slate-200 p-3 shadow-sm text-left flex items-center gap-3 active:scale-[.99]';
+    card.className = 'inventory-card';
     card.addEventListener('click', () => openEditor('update', product));
 
     const imgBox = document.createElement('div');
-    imgBox.className = 'w-16 h-16 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden grid place-items-center shrink-0';
+    imgBox.className = 'inventory-thumb';
     if (product.imageSafe) {
       const img = document.createElement('img');
       img.src = product.imageSafe;
-      img.alt = product.name;
+      img.alt = product.name || 'Producto';
       img.loading = 'lazy';
       img.decoding = 'async';
-      img.className = 'w-full h-full object-contain';
       img.onerror = () => img.replaceWith(imagePlaceholder());
       imgBox.appendChild(img);
-    } else {
-      imgBox.appendChild(imagePlaceholder());
-    }
+    } else imgBox.appendChild(imagePlaceholder());
 
     const info = document.createElement('div');
-    info.className = 'min-w-0 flex-1';
     info.innerHTML = `
-      <h3 class="font-black text-base leading-snug line-clamp-2">${escapeHtml(product.name || 'Sin nombre')}</h3>
-      <p class="font-mono text-xs text-slate-500 mt-1">${escapeHtml(product.sku)}</p>
-      <p class="font-black text-emerald-700 text-base">${formatPrice(product.price)}</p>
-    `;
+      <h3 class="inventory-name">${escapeHtml(product.name || 'Sin nombre')}</h3>
+      <p class="inventory-sku">${escapeHtml(product.sku)}</p>
+      <p class="inventory-price">${formatPrice(product.price)}</p>`;
 
     const stock = document.createElement('div');
-    stock.className = 'text-center shrink-0 min-w-12';
-    stock.innerHTML = `<p class="text-3xl font-black ${product.stock <= 0 ? 'text-red-600' : 'text-blue-700'}">${safeInt(product.stock)}</p><p class="text-[10px] font-black uppercase text-slate-400">piezas</p>`;
-
+    stock.className = 'inventory-stock';
+    stock.innerHTML = `<strong class="${product.stock <= 0 ? 'zero' : ''}">${safeInt(product.stock)}</strong><span>piezas</span>`;
     card.append(imgBox, info, stock);
     return card;
   }
@@ -402,12 +617,8 @@
     if (state.busy) return;
     const sku = normalizeSku($('sku-input').value);
     if (!sku) return toast('Escribe o escanea el código del producto', 'error');
-
     const cached = state.products.find(p => p.sku === sku);
-    if (cached) {
-      openEditor('update', cached);
-      return;
-    }
+    if (cached) { openEditor('update', cached); return; }
 
     setBusy($('search-button'), true, 'Buscando...');
     try {
@@ -416,19 +627,11 @@
         const product = normalizeProduct(result.data);
         upsertLocal(product);
         openEditor('update', product);
-      } else {
-        openEditor('create', emptyProduct(sku));
-      }
+      } else openEditor('create', emptyProduct(sku));
     } catch (error) {
       console.error('checkSku:', error);
-      if (navigator.onLine) {
-        toast('No se pudo consultar. Puedes intentar otra vez.', 'error');
-      } else {
-        toast('No hay internet para consultar un producto nuevo', 'error');
-      }
-    } finally {
-      setBusy($('search-button'), false);
-    }
+      toast(navigator.onLine ? 'No se pudo consultar. Intenta otra vez.' : 'No hay internet para consultar un producto nuevo', 'error');
+    } finally { setBusy($('search-button'), false); }
   }
 
   function openEditor(mode, product) {
@@ -437,7 +640,6 @@
     state.currentPhoto = null;
     state.currentPhotoIsNew = false;
     state.removeImage = false;
-
     $('home-section').classList.add('hidden');
     $('editor-section').classList.remove('hidden');
     $('editor-title').textContent = mode === 'create' ? 'Nuevo producto' : 'Producto registrado';
@@ -445,18 +647,11 @@
     $('form-sku').value = state.currentProduct.sku;
     $('form-sku').disabled = mode === 'update';
     $('form-name').value = state.currentProduct.name || '';
-    $('form-stock').value = safeInt(state.currentProduct.stock || (mode === 'create' ? 1 : 0));
+    $('form-stock').value = mode === 'create' ? Math.max(1, safeInt(state.currentProduct.stock)) : safeInt(state.currentProduct.stock);
     $('form-price').value = Number(state.currentProduct.price || 0) || '';
     $('existing-actions').classList.toggle('hidden', mode !== 'update');
-
-    if (state.currentProduct.imageSafe) showPhoto(state.currentProduct.imageSafe);
-    else resetPhotoUI();
-
-    window.scrollTo({ top: 0, behavior: 'instant' });
-    lucide.createIcons();
-    setTimeout(() => {
-      if (mode === 'create' && !$('form-name').value) $('form-name').focus({ preventScroll: true });
-    }, 100);
+    if (state.currentProduct.imageSafe) showPhoto(state.currentProduct.imageSafe); else resetPhotoUI();
+    window.scrollTo(0, 0);
   }
 
   function closeEditor() {
@@ -468,8 +663,7 @@
     $('editor-section').classList.add('hidden');
     $('home-section').classList.remove('hidden');
     $('sku-input').value = '';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    setTimeout(() => $('sku-input').focus({ preventScroll: true }), 150);
+    window.scrollTo(0, 0);
   }
 
   function changeStock(delta) {
@@ -479,28 +673,17 @@
 
   async function saveProduct() {
     if (state.busy) return;
-
     const sku = normalizeSku($('form-sku').value);
     const name = $('form-name').value.trim();
     const stock = Number.parseInt($('form-stock').value, 10);
     const price = Number($('form-price').value);
-
     if (!sku) return toast('Falta el código SKU', 'error');
     if (!name) return toast('Escribe el nombre del producto', 'error');
     if (!Number.isInteger(stock) || stock < 0) return toast('La cantidad no es válida', 'error');
     if (!Number.isFinite(price) || price < 0) return toast('El precio no es válido', 'error');
 
     const action = state.mode === 'create' ? 'create' : 'update';
-    const payload = {
-      action,
-      sku,
-      name,
-      stock,
-      price,
-      imageBase64: state.currentPhotoIsNew ? state.currentPhoto : null,
-      removeImage: state.removeImage
-    };
-
+    const payload = { action, sku, name, stock, price, imageBase64:state.currentPhotoIsNew ? state.currentPhoto : null, removeImage:state.removeImage };
     const expected = { action, sku, name, stock, price };
     setBusy($('save-button'), true, 'Guardando...');
 
@@ -508,23 +691,17 @@
       const result = await postWithVerification(payload, expected);
       const serverProduct = result.data && typeof result.data === 'object' ? normalizeProduct(result.data) : null;
       const previousImage = state.currentProduct?.image || '';
-      const localProduct = serverProduct || normalizeProduct({
-        sku, name, stock, price,
-        image: state.removeImage ? '' : (previousImage || '')
-      });
-
+      const localProduct = serverProduct || normalizeProduct({ sku, name, stock, price, image:state.removeImage ? '' : previousImage });
       upsertLocal(localProduct);
       saveCache();
       renderInventory();
-      toast(state.mode === 'create' ? 'Producto guardado correctamente' : 'Cambios guardados', 'success');
+      toast(state.mode === 'create' ? 'Producto guardado correctamente' : 'Cambios guardados');
       closeEditor();
       setTimeout(() => refreshInventory(false, true), 900);
     } catch (error) {
       console.error('saveProduct:', error);
       toast(friendlyError(error, 'No se pudo guardar. Intenta nuevamente.'), 'error');
-    } finally {
-      setBusy($('save-button'), false);
-    }
+    } finally { setBusy($('save-button'), false); }
   }
 
   async function addOne() {
@@ -532,31 +709,15 @@
     const sku = state.currentProduct.sku;
     const before = safeInt($('form-stock').value);
     const expectedStock = before + 1;
-
     setBusy($('add-one-button'), true, 'Sumando...');
     try {
-      const result = await postWithVerification(
-        { action: 'add', sku, stock: 1 },
-        { action: 'add', sku, minStock: expectedStock }
-      );
-
+      const result = await postWithVerification({ action:'add', sku, stock:1 }, { action:'add', sku, minStock:expectedStock });
       const found = state.products.find(p => p.sku === sku) || state.currentProduct;
-      const updated = result.data && typeof result.data === 'object'
-        ? normalizeProduct(result.data)
-        : normalizeProduct({ ...found, stock: expectedStock });
-
-      upsertLocal(updated);
-      saveCache();
-      renderInventory();
-      toast('Se agregó 1 pieza', 'success');
-      closeEditor();
+      const updated = result.data && typeof result.data === 'object' ? normalizeProduct(result.data) : normalizeProduct({ ...found, stock:expectedStock });
+      upsertLocal(updated); saveCache(); renderInventory(); toast('Se agregó 1 pieza'); closeEditor();
       setTimeout(() => refreshInventory(false, true), 700);
-    } catch (error) {
-      console.error('addOne:', error);
-      toast(friendlyError(error, 'No se pudo sumar la pieza'), 'error');
-    } finally {
-      setBusy($('add-one-button'), false);
-    }
+    } catch (error) { toast(friendlyError(error, 'No se pudo sumar la pieza'), 'error'); }
+    finally { setBusy($('add-one-button'), false); }
   }
 
   async function deleteProduct() {
@@ -564,74 +725,50 @@
     const sku = state.currentProduct.sku;
     const name = $('form-name').value.trim() || state.currentProduct.name;
     if (!confirm(`¿Eliminar ${name}?\n\nEsta acción no se puede deshacer.`)) return;
-
     setBusy($('delete-button'), true, 'Eliminando...');
     try {
-      await postWithVerification({ action: 'delete', sku }, { action: 'delete', sku });
+      await postWithVerification({ action:'delete', sku }, { action:'delete', sku });
       state.products = state.products.filter(p => p.sku !== sku);
-      saveCache();
-      renderInventory();
-      toast('Producto eliminado', 'success');
-      closeEditor();
+      saveCache(); renderInventory(); toast('Producto eliminado'); closeEditor();
       setTimeout(() => refreshInventory(false, true), 700);
-    } catch (error) {
-      console.error('deleteProduct:', error);
-      toast(friendlyError(error, 'No se pudo eliminar'), 'error');
-    } finally {
-      setBusy($('delete-button'), false);
-    }
+    } catch (error) { toast(friendlyError(error, 'No se pudo eliminar'), 'error'); }
+    finally { setBusy($('delete-button'), false); }
   }
 
   async function postWithVerification(payload, expected) {
     let firstError = null;
-
     try {
       const result = await postJson(payload, REQUEST_TIMEOUT);
-      if (['success', 'updated', 'deleted'].includes(String(result.status || '').toLowerCase())) return result;
+      if (['success','updated','deleted'].includes(String(result.status || '').toLowerCase())) return result;
       if (result.status === 'not_found') throw new Error('Producto no encontrado');
       throw new Error(result.error || result.message || 'El servidor no confirmó la operación');
-    } catch (error) {
-      firstError = error;
-      console.warn('POST no confirmado, verificando resultado...', error);
-    }
+    } catch (error) { firstError = error; console.warn('POST no confirmado, verificando...', error); }
 
-    // Google Apps Script a veces ejecuta la operación y la respuesta se pierde.
-    // Antes de mostrar error, consultamos el SKU para evitar duplicados.
     await sleep(700);
     try {
       const verification = await fetchProduct(expected.sku, 9000);
-
-      if (expected.action === 'delete') {
-        if (!verification.exists) return { status: 'deleted', verified: true };
-      } else if (verification.exists && verification.data) {
+      if (expected.action === 'delete' && !verification.exists) return { status:'deleted', verified:true };
+      if (verification.exists && verification.data) {
         const p = normalizeProduct(verification.data);
-        if (expected.action === 'add') {
-          if (p.stock >= expected.minStock) return { status: 'updated', data: p, verified: true };
-        } else {
+        if (expected.action === 'add' && p.stock >= expected.minStock) return { status:'updated', data:p, verified:true };
+        if (expected.action !== 'add') {
           const sameName = normalizeText(p.name) === normalizeText(expected.name);
           const sameStock = safeInt(p.stock) === safeInt(expected.stock);
-          const samePrice = Math.abs(Number(p.price) - Number(expected.price)) < 0.011;
-          if (sameName && sameStock && samePrice) return { status: expected.action === 'create' ? 'success' : 'updated', data: p, verified: true };
+          const samePrice = Math.abs(Number(p.price) - Number(expected.price)) < .011;
+          if (sameName && sameStock && samePrice) return { status:expected.action === 'create' ? 'success' : 'updated', data:p, verified:true };
         }
       }
-    } catch (verifyError) {
-      console.warn('No se pudo verificar:', verifyError);
-    }
-
+    } catch (verifyError) { console.warn('No se pudo verificar:', verifyError); }
     throw firstError || new Error('No se pudo confirmar la operación');
   }
 
   async function fetchProduct(sku, timeout = REQUEST_TIMEOUT) {
     const json = await getJson(`${state.apiUrl}?sku=${encodeURIComponent(sku)}&_=${Date.now()}`, timeout);
-    return {
-      exists: Boolean(json.exists),
-      data: json.data || null,
-      raw: json
-    };
+    return { exists:Boolean(json.exists), data:json.data || null, raw:json };
   }
 
   async function getJson(url, timeout) {
-    const response = await fetchWithTimeout(url, { method: 'GET', redirect: 'follow', cache: 'no-store' }, timeout);
+    const response = await fetchWithTimeout(url, { method:'GET', redirect:'follow', cache:'no-store' }, timeout);
     const text = await response.text();
     if (!response.ok) throw new Error(`Error de servidor ${response.status}`);
     return parseJsonResponse(text);
@@ -639,13 +776,10 @@
 
   async function postJson(payload, timeout) {
     const response = await fetchWithTimeout(state.apiUrl, {
-      method: 'POST',
-      redirect: 'follow',
-      cache: 'no-store',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
+      method:'POST', redirect:'follow', cache:'no-store',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body:JSON.stringify(payload)
     }, timeout);
-
     const text = await response.text();
     if (!response.ok) throw new Error(`Error de servidor ${response.status}`);
     return parseJsonResponse(text);
@@ -654,15 +788,10 @@
   function parseJsonResponse(text) {
     const clean = String(text || '').trim();
     if (!clean) throw new Error('El servidor respondió vacío');
-    try {
-      return JSON.parse(clean);
-    } catch (_) {
-      const start = clean.indexOf('{');
-      const end = clean.lastIndexOf('}');
-      if (start >= 0 && end > start) {
-        try { return JSON.parse(clean.slice(start, end + 1)); } catch (_) {}
-      }
-      console.error('Respuesta no JSON:', clean.slice(0, 500));
+    try { return JSON.parse(clean); }
+    catch (_) {
+      const start = clean.indexOf('{'); const end = clean.lastIndexOf('}');
+      if (start >= 0 && end > start) { try { return JSON.parse(clean.slice(start, end + 1)); } catch (_) {} }
       throw new Error('El servidor respondió en un formato incorrecto');
     }
   }
@@ -670,14 +799,9 @@
   async function fetchWithTimeout(url, options, timeout) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
-    try {
-      return await fetch(url, { ...options, signal: controller.signal });
-    } catch (error) {
-      if (error.name === 'AbortError') throw new Error('La conexión tardó demasiado');
-      throw error;
-    } finally {
-      clearTimeout(timer);
-    }
+    try { return await fetch(url, { ...options, signal:controller.signal }); }
+    catch (error) { if (error.name === 'AbortError') throw new Error('La conexión tardó demasiado'); throw error; }
+    finally { clearTimeout(timer); }
   }
 
   async function startCamera(mode) {
@@ -691,30 +815,16 @@
       $('photo-controls').classList.add('hidden');
       $('photo-controls').classList.remove('flex');
       $('qr-reader').classList.remove('hidden');
-
-      if (!window.Html5Qrcode) {
-        toast('El escáner no cargó. Puedes escribir el SKU.', 'error');
-        stopCamera();
-        return;
-      }
-
+      if (!window.Html5Qrcode) { toast('El escáner no cargó. Puedes escribir el SKU.', 'error'); stopCamera(); return; }
       try {
         state.qr = new Html5Qrcode('qr-reader');
         await state.qr.start(
-          { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 270, height: 170 }, aspectRatio: 1.3 },
-          text => {
-            $('sku-input').value = normalizeSku(text);
-            stopCamera();
-            setTimeout(checkSku, 100);
-          },
+          { facingMode:'environment' },
+          { fps:10, qrbox:{ width:250, height:160 }, aspectRatio:1.3 },
+          text => { $('sku-input').value = normalizeSku(text); stopCamera(); setTimeout(checkSku, 100); },
           () => {}
         );
-      } catch (error) {
-        console.error('scanner:', error);
-        toast('No se pudo abrir el escáner. Escribe el SKU.', 'error');
-        stopCamera();
-      }
+      } catch (error) { console.error('scanner:', error); toast('No se pudo abrir el escáner. Escribe el SKU.', 'error'); stopCamera(); }
       return;
     }
 
@@ -723,107 +833,51 @@
     $('camera-video').classList.remove('hidden');
     $('photo-controls').classList.remove('hidden');
     $('photo-controls').classList.add('flex');
-
     try {
       state.stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
+        video:{ facingMode:{ ideal:'environment' }, width:{ ideal:1280 }, height:{ ideal:720 } }, audio:false
       });
       $('camera-video').srcObject = state.stream;
-    } catch (error) {
-      console.error('camera:', error);
-      toast('No se pudo abrir la cámara', 'error');
-      stopCamera();
-    }
+    } catch (error) { console.error('camera:', error); toast('No se pudo abrir la cámara', 'error'); stopCamera(); }
   }
 
   function stopCamera() {
     $('camera-modal').classList.add('hidden');
     $('camera-modal').classList.remove('flex');
-
-    if (state.stream) {
-      state.stream.getTracks().forEach(track => track.stop());
-      state.stream = null;
-      $('camera-video').srcObject = null;
-    }
-
+    if (state.stream) { state.stream.getTracks().forEach(track => track.stop()); state.stream = null; $('camera-video').srcObject = null; }
     if (state.qr) {
-      const qr = state.qr;
-      state.qr = null;
-      Promise.resolve(qr.stop()).catch(() => {}).finally(() => {
-        try { qr.clear(); } catch (_) {}
-      });
+      const qr = state.qr; state.qr = null;
+      Promise.resolve(qr.stop()).catch(() => {}).finally(() => { try { qr.clear(); } catch (_) {} });
     }
   }
 
   function capturePhoto() {
     const video = $('camera-video');
-    if (!video.videoWidth || !video.videoHeight) {
-      toast('Espera un momento, la cámara está cargando', 'error');
-      return;
-    }
-
+    if (!video.videoWidth || !video.videoHeight) return toast('Espera un momento, la cámara está cargando', 'error');
     const canvas = $('photo-canvas');
-    const maxSide = 1000;
+    const maxSide = 900;
     const scale = Math.min(1, maxSide / Math.max(video.videoWidth, video.videoHeight));
     canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
     canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
-
-    const ctx = canvas.getContext('2d', { alpha: false });
+    const ctx = canvas.getContext('2d', { alpha:false });
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Calidad suficiente para catálogo y mucho más ligera para Apps Script.
-    state.currentPhoto = canvas.toDataURL('image/jpeg', 0.72);
+    state.currentPhoto = canvas.toDataURL('image/jpeg', .68);
     state.currentPhotoIsNew = true;
     state.removeImage = false;
     showPhoto(state.currentPhoto);
     stopCamera();
   }
 
-  function showPhoto(src) {
-    $('photo-preview').src = src;
-    $('photo-wrap').classList.remove('hidden');
-    $('photo-button').classList.add('hidden');
-  }
+  function showPhoto(src) { $('photo-preview').src = src; $('photo-wrap').classList.remove('hidden'); $('photo-button').classList.add('hidden'); }
+  function clearPhoto() { state.currentPhoto = null; state.currentPhotoIsNew = false; state.removeImage = state.mode === 'update' && Boolean(state.currentProduct?.image); resetPhotoUI(); }
+  function resetPhotoUI() { $('photo-preview').src = ''; $('photo-wrap').classList.add('hidden'); $('photo-button').classList.remove('hidden'); }
 
-  function clearPhoto() {
-    state.currentPhoto = null;
-    state.currentPhotoIsNew = false;
-    state.removeImage = state.mode === 'update' && Boolean(state.currentProduct?.image);
-    resetPhotoUI();
-  }
-
-  function resetPhotoUI() {
-    $('photo-preview').src = '';
-    $('photo-wrap').classList.add('hidden');
-    $('photo-button').classList.remove('hidden');
-  }
-
-  function openSettings() {
-    $('api-url-input').value = state.apiUrl;
-    $('settings-modal').classList.remove('hidden');
-    $('settings-modal').classList.add('flex');
-  }
-
-  function closeSettings() {
-    $('settings-modal').classList.add('hidden');
-    $('settings-modal').classList.remove('flex');
-  }
-
+  function openSettings() { $('api-url-input').value = state.apiUrl; $('settings-modal').classList.remove('hidden'); $('settings-modal').classList.add('flex'); }
+  function closeSettings() { $('settings-modal').classList.add('hidden'); $('settings-modal').classList.remove('flex'); }
   function saveSettings() {
     const url = $('api-url-input').value.trim();
-    if (!/^https:\/\/script\.google\.com\//i.test(url)) {
-      return toast('La URL de Apps Script no es válida', 'error');
-    }
-    state.apiUrl = url;
-    localStorage.setItem(API_URL_KEY, url);
-    closeSettings();
-    toast('Configuración guardada', 'success');
-    refreshInventory(true, false);
+    if (!/^https:\/\/script\.google\.com\//i.test(url)) return toast('La URL de Apps Script no es válida', 'error');
+    state.apiUrl = url; localStorage.setItem(API_URL_KEY, url); closeSettings(); toast('Configuración guardada'); refreshInventory(true, false);
   }
 
   function upsertLocal(product) {
@@ -835,42 +889,22 @@
 
   function renderStats() {
     $('stat-products').textContent = state.products.length;
-    $('stat-stock').textContent = state.products.reduce((sum, p) => sum + Math.max(0, safeInt(p.stock)), 0);
+    $('stat-stock').textContent = state.products.reduce((sum,p) => sum + Math.max(0, safeInt(p.stock)), 0);
     $('stat-empty').textContent = state.products.filter(p => safeInt(p.stock) <= 0).length;
   }
 
   function updateStatus(custom) {
-    if (custom) {
-      $('status-label').textContent = custom;
-      return;
-    }
-    if (!navigator.onLine) {
-      $('status-label').textContent = 'Sin internet · mostrando datos guardados';
-      return;
-    }
-    if (state.lastSync) {
-      $('status-label').textContent = 'Actualizado ' + state.lastSync.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-    } else {
-      $('status-label').textContent = 'Listo para registrar';
-    }
+    if (custom) { $('status-label').textContent = custom; return; }
+    if (!navigator.onLine) { $('status-label').textContent = 'Sin internet · datos guardados'; return; }
+    if (state.lastSync) $('status-label').textContent = 'Actualizado ' + state.lastSync.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
+    else $('status-label').textContent = 'Listo para registrar';
   }
 
   function normalizeProduct(product) {
     const image = String(product?.image || '').trim();
-    return {
-      name: String(product?.name || '').trim(),
-      sku: normalizeSku(product?.sku),
-      stock: safeInt(product?.stock),
-      price: Number(product?.price || 0),
-      image,
-      imageSafe: imageUrl(image)
-    };
+    return { name:String(product?.name || '').trim(), sku:normalizeSku(product?.sku), stock:safeInt(product?.stock), price:Number(product?.price || 0), image, imageSafe:imageUrl(image) };
   }
-
-  function emptyProduct(sku) {
-    return { sku: normalizeSku(sku), name: '', stock: 1, price: 0, image: '', imageSafe: '' };
-  }
-
+  function emptyProduct(sku) { return { sku:normalizeSku(sku), name:'', stock:1, price:0, image:'', imageSafe:'' }; }
   function imageUrl(link) {
     const value = String(link || '').trim();
     if (!value) return '';
@@ -879,30 +913,18 @@
     if (match) return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w500`;
     return value;
   }
-
-  function imagePlaceholder() {
-    const div = document.createElement('div');
-    div.className = 'w-full h-full bg-slate-100 text-slate-300 grid place-items-center';
-    div.innerHTML = '<i data-lucide="image-off" class="w-7 h-7"></i>';
-    return div;
-  }
+  function imagePlaceholder() { const div = document.createElement('div'); div.className = 'image-placeholder'; div.textContent = '🖼'; return div; }
 
   function setBusy(button, busy, label = '') {
     if (!button) return;
     if (busy) {
-      state.busy = true;
-      button.disabled = true;
+      state.busy = true; button.disabled = true;
       if (!button.dataset.originalHtml) button.dataset.originalHtml = button.innerHTML;
-      if (label) button.innerHTML = `<div class="loader"></div><span>${escapeHtml(label)}</span>`;
+      if (label) button.innerHTML = `<span class="mini-spinner"></span><span>${escapeHtml(label)}</span>`;
     } else {
-      state.busy = false;
-      button.disabled = false;
-      if (button.dataset.originalHtml) {
-        button.innerHTML = button.dataset.originalHtml;
-        delete button.dataset.originalHtml;
-      }
+      state.busy = false; button.disabled = false;
+      if (button.dataset.originalHtml) { button.innerHTML = button.dataset.originalHtml; delete button.dataset.originalHtml; }
     }
-    lucide.createIcons();
   }
 
   function friendlyError(error, fallback) {
@@ -912,37 +934,17 @@
     if (/tardó demasiado/i.test(msg)) return 'La conexión está lenta. Intenta guardar otra vez.';
     return msg;
   }
-
-  function normalizeSku(value) {
-    return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
-  }
-
-  function normalizeText(value) {
-    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-  }
-
-  function safeInt(value) {
-    const n = Number.parseInt(value, 10);
-    return Number.isFinite(n) ? Math.max(0, n) : 0;
-  }
-
-  function formatPrice(value) {
-    return Number(value || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
-  }
-
-  function escapeHtml(value) {
-    return String(value || '').replace(/[&<>"']/g, char => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
-    }[char]));
-  }
-
+  function normalizeSku(value) { return String(value || '').trim().toUpperCase().replace(/\s+/g, ''); }
+  function normalizeText(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
+  function safeInt(value) { const n = Number.parseInt(value, 10); return Number.isFinite(n) ? Math.max(0, n) : 0; }
+  function formatPrice(value) { return Number(value || 0).toLocaleString('es-MX', { style:'currency', currency:'MXN' }); }
+  function escapeHtml(value) { return String(value || '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' }[char])); }
   function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
   function toast(message, type = 'success') {
     const el = $('toast');
     el.textContent = message;
-    el.className = `fixed top-24 left-1/2 -translate-x-1/2 z-[80] w-[calc(100%-2rem)] max-w-md rounded-2xl px-5 py-4 text-base font-black text-white shadow-2xl text-center ${type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`;
-    el.classList.remove('hidden');
+    el.className = 'toast' + (type === 'error' ? ' error' : '');
     clearTimeout(toast.timer);
     toast.timer = setTimeout(() => el.classList.add('hidden'), type === 'error' ? 5000 : 2600);
   }
