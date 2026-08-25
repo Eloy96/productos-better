@@ -1,663 +1,952 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Inventario Drive Pro</title>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Iconos Lucide -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <!-- Escáner QR -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#047857">
+  <title>Inventario Better</title>
 
-    <style>
-        body { -webkit-tap-highlight-color: transparent; }
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
-        .slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        
-        .loader { border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #16a34a; width: 24px; height: 24px; -webkit-animation: spin 1s linear infinite; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+  <style>
+    html { -webkit-text-size-adjust: 100%; }
+    body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; }
+    button, input { touch-action: manipulation; }
+    .loader {
+      width: 22px; height: 22px; border-radius: 999px;
+      border: 3px solid rgba(255,255,255,.35); border-top-color: #fff;
+      animation: spin .75s linear infinite;
+    }
+    .loader-dark { border-color: #d1fae5; border-top-color: #047857; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .fade-in { animation: fadeIn .18s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .safe-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+  </style>
 </head>
-<body class="bg-gray-100 font-sans h-screen flex flex-col overflow-hidden">
+<body class="min-h-screen bg-slate-100 text-slate-900">
 
-    <!-- Header -->
-    <header class="bg-green-700 text-white p-4 shadow-lg flex justify-between items-center shrink-0 z-20">
-        <div>
-            <h1 class="text-lg font-bold flex items-center gap-2">
-                <i data-lucide="package-search"></i> Inventario Pro
-            </h1>
-            <p class="text-[10px] text-green-200 opacity-90">Gestión Total</p>
-        </div>
-        <button onclick="app.showConfig()" class="p-2 hover:bg-green-800 rounded-full transition">
-            <i data-lucide="settings" class="w-5 h-5"></i>
-        </button>
-    </header>
-
-    <!-- Main Content -->
-    <main id="app-container" class="flex-1 overflow-y-auto p-4 pb-24 relative">
-        
-        <!-- PANTALLA 1: BÚSQUEDA Y LISTA (Inicio) -->
-        <div id="view-search" class="fade-in max-w-md mx-auto mt-2">
-            
-            <!-- Buscador -->
-            <div class="bg-white rounded-xl shadow-md p-5 mb-6">
-                <div class="flex gap-2 mb-3">
-                    <input type="text" id="search-sku" placeholder="Escanear o Escribir SKU..." 
-                           class="flex-1 p-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none text-lg font-mono text-center uppercase">
-                    <button onclick="app.startCamera('scanner')" class="bg-gray-800 text-white px-4 rounded-lg hover:bg-black transition">
-                        <i data-lucide="camera" class="w-6 h-6"></i>
-                    </button>
-                </div>
-                <button onclick="app.checkSku()" id="btn-search" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold shadow hover:bg-green-700 transition flex justify-center items-center gap-2">
-                    <span>Buscar / Registrar</span>
-                    <i data-lucide="search" class="w-4 h-4"></i>
-                </button>
-            </div>
-
-            <!-- Lista Global -->
-            <div id="global-inventory-container">
-                <div class="flex justify-between items-center mb-3 ml-1">
-                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
-                        <i data-lucide="globe" class="w-3 h-3"></i> Inventario en la Nube
-                    </h3>
-                    <button onclick="app.loadGlobalInventory()" class="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50 transition">
-                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                    </button>
-                </div>
-                
-                <!-- Loading State -->
-                <div id="inventory-loader" class="text-center py-8 hidden">
-                    <div class="loader mx-auto mb-2"></div>
-                    <p class="text-xs text-gray-400">Cargando productos...</p>
-                </div>
-
-                <!-- Lista -->
-                <div id="inventory-list" class="space-y-3 pb-6">
-                    <!-- Items inyectados por JS -->
-                </div>
-            </div>
-        </div>
-
-        <!-- PANTALLA 2: PRODUCTO EXISTENTE -->
-        <div id="view-existing" class="hidden slide-up max-w-md mx-auto mt-4">
-            <div class="bg-white rounded-xl shadow-lg overflow-hidden border-t-4 border-blue-500">
-                <div class="bg-blue-50 p-3 border-b border-blue-100 flex items-center justify-between px-4">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="check-circle" class="text-blue-600 w-5 h-5"></i>
-                        <span class="font-bold text-blue-900 text-sm">Registrado</span>
-                    </div>
-                    <!-- Botones de Gestión -->
-                    <div class="flex gap-2">
-                        <button onclick="app.editProduct()" class="p-1.5 bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200" title="Editar">
-                            <i data-lucide="edit-3" class="w-4 h-4"></i>
-                        </button>
-                        <button onclick="app.deleteProduct()" class="p-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200" title="Eliminar">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="p-6 text-center">
-                    <div class="mb-6 flex flex-col items-center">
-                        <div class="w-64 h-64 bg-gray-200 rounded-lg overflow-hidden shadow-sm mb-3 relative group">
-                            <!-- Imagen remota con fix -->
-                            <img id="exist-img" src="" class="w-full h-full object-cover hidden transition-opacity duration-300">
-                            
-                            <!-- Fallback -->
-                            <div id="exist-fallback" class="w-full h-full flex flex-col items-center justify-center text-gray-400 absolute inset-0 bg-gray-100">
-                                <i data-lucide="image" class="w-16 h-16 mb-2 opacity-50"></i>
-                                <span class="text-xs">Sin imagen</span>
-                            </div>
-                        </div>
-                        <h3 id="exist-name" class="font-bold text-gray-800 text-xl leading-tight mb-1">Nombre Producto</h3>
-                        <p class="text-gray-500 text-sm mb-2 font-mono" id="exist-sku-display">SKU: ---</p>
-                        
-                        <div class="flex gap-4 text-sm bg-gray-50 px-4 py-2 rounded-full border">
-                            <span>Precio: <strong id="exist-price" class="text-gray-800">$0.00</strong></span>
-                            <span class="text-gray-300">|</span>
-                            <span>Stock: <strong id="exist-stock-current" class="text-blue-600">0</strong></span>
-                        </div>
-                    </div>
-
-                    <p class="text-gray-800 font-bold mb-4 text-lg">Acciones Rápidas</p>
-
-                    <div class="grid grid-cols-1 gap-3">
-                        <button onclick="app.quickAddOne()" id="btn-add-one" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 active:scale-95">
-                            <i data-lucide="plus-circle" class="w-6 h-6"></i> Agregar +1
-                        </button>
-                        <button onclick="app.resetToSearch()" class="w-full bg-white border-2 border-gray-200 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-100 transition flex items-center justify-center gap-2">
-                            <i data-lucide="arrow-left" class="w-5 h-5"></i> Volver
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- PANTALLA 3: PRODUCTO NUEVO / EDITAR -->
-        <div id="view-new" class="hidden slide-up max-w-md mx-auto mt-4">
-            <div class="bg-white rounded-xl shadow-lg border-t-4 border-green-500 p-5">
-                <div class="flex justify-between items-start mb-4">
-                    <div>
-                        <h2 id="form-title" class="font-bold text-green-900 text-lg">Nuevo Producto</h2>
-                        <p class="text-xs text-green-700">SKU <span id="new-sku-display" class="font-mono font-bold bg-green-100 px-1 rounded">---</span></p>
-                    </div>
-                    <button onclick="app.resetToSearch()" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
-                </div>
-
-                <div class="space-y-4">
-                    <div class="flex flex-col items-center justify-center">
-                        <div id="new-photo-preview-container" class="hidden relative w-full group">
-                            <img id="new-photo-preview" src="" class="w-full h-64 object-cover rounded-lg shadow-sm border">
-                            <button onclick="app.clearPhoto()" class="absolute top-2 right-2 bg-red-600 text-white rounded-full p-2 shadow-lg"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
-                        </div>
-                        <button id="btn-take-photo" onclick="app.startCamera('photo')" class="w-full h-40 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-green-500 hover:text-green-500 bg-gray-50 transition">
-                            <i data-lucide="camera" class="w-10 h-10 mb-2"></i>
-                            <span class="text-sm font-bold">TOMAR FOTO HD</span>
-                        </button>
-                    </div>
-
-                    <div>
-                        <label class="text-xs font-bold text-gray-500">Nombre</label>
-                        <input id="new-name" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none" placeholder="Ej. Lámpara">
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label id="lbl-stock" class="text-xs font-bold text-gray-500">Stock Inicial</label>
-                            <input type="number" id="new-stock" value="1" class="w-full p-3 border rounded-lg text-center font-bold focus:ring-2 focus:ring-green-500 outline-none">
-                        </div>
-                        <div>
-                            <label class="text-xs font-bold text-gray-500">Precio ($)</label>
-                            <input type="number" id="new-price" placeholder="0.00" class="w-full p-3 border rounded-lg text-center focus:ring-2 focus:ring-green-500 outline-none">
-                        </div>
-                    </div>
-
-                    <!-- Modo Edición flag -->
-                    <input type="hidden" id="is-edit-mode" value="false">
-
-                    <button onclick="app.submitProductForm()" id="btn-create" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold shadow hover:bg-green-700 transition flex justify-center items-center gap-2">
-                        <i data-lucide="save" class="w-4 h-4"></i> Guardar
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- PANTALLA: CONFIGURACIÓN -->
-        <div id="view-config" class="hidden fade-in bg-gray-800 text-white p-6 rounded-xl shadow-2xl mt-10 max-w-md mx-auto">
-            <h2 class="text-xl font-bold mb-4 text-center">Configuración</h2>
-            <input id="inp-script-url" class="w-full p-2 bg-gray-700 border border-gray-600 rounded text-xs text-green-300 font-mono mb-4" placeholder="URL Google Script...">
-            <div class="flex gap-2">
-                <button onclick="app.resetToSearch()" class="flex-1 bg-gray-600 py-2 rounded">Cancelar</button>
-                <button onclick="app.saveConfig()" class="flex-1 bg-green-600 py-2 rounded font-bold">Guardar</button>
-            </div>
-        </div>
-    </main>
-
-    <!-- Modal Cámara -->
-    <div id="camera-modal" class="fixed inset-0 bg-black z-50 hidden flex flex-col">
-        <div class="relative flex-1 bg-black flex flex-col justify-center overflow-hidden">
-            <video id="camera-video" autoplay playsinline muted class="absolute w-full h-full object-cover"></video>
-            <div id="reader" class="w-full h-full hidden"></div>
-            <button onclick="app.stopCamera()" class="absolute top-4 right-4 bg-white/20 text-white p-2 rounded-full backdrop-blur z-50"><i data-lucide="x"></i></button>
-        </div>
-        <div id="photo-controls" class="h-24 bg-black flex items-center justify-center shrink-0">
-            <button onclick="app.capturePhoto()" class="w-16 h-16 bg-white rounded-full border-4 border-gray-400 hover:scale-105 transition"></button>
-        </div>
+  <header class="sticky top-0 z-30 bg-emerald-700 text-white shadow-md">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
+      <div class="w-11 h-11 rounded-2xl bg-white/15 grid place-items-center shrink-0">
+        <i data-lucide="package-search" class="w-6 h-6"></i>
+      </div>
+      <div class="min-w-0">
+        <h1 class="font-black text-xl leading-tight">Inventario Better</h1>
+        <p id="status-label" class="text-sm text-emerald-100">Preparando inventario...</p>
+      </div>
+      <button id="settings-button" type="button" aria-label="Configuración" class="ml-auto w-12 h-12 rounded-full grid place-items-center active:bg-white/15">
+        <i data-lucide="settings" class="w-6 h-6"></i>
+      </button>
     </div>
+  </header>
 
-    <!-- Notificación -->
-    <div id="notification" class="fixed top-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-50 text-white font-medium text-sm hidden transition-all duration-300 text-center w-max max-w-[90%]">Mensaje</div>
-    <canvas id="photo-canvas" class="hidden"></canvas>
+  <main class="max-w-5xl mx-auto px-3 sm:px-4 py-4 safe-bottom">
 
-    <script>
-        const app = {
-            state: {
-                url: localStorage.getItem('GOOGLE_SCRIPT_URL') || "https://script.google.com/macros/s/AKfycbwczNs-lS1aUyJxpvSMuYGekx9zSHxNwWONxw3PdkLhTIbG3D6LqE7SLx4mgl-SwGV5/exec",
-                currentSku: '',
-                currentPhoto: null,
-                stream: null,
-                existingData: null
-            },
+    <section id="home-section" class="fade-in">
+      <div class="rounded-2xl bg-white border border-slate-200 shadow-sm p-4 mb-4">
+        <p class="font-black text-lg mb-1">¿Qué producto vas a registrar?</p>
+        <p class="text-sm text-slate-500 mb-4">Escanea el código o escríbelo.</p>
 
-            init() {
-                lucide.createIcons();
-                if (!this.state.url) this.showConfig();
-                else this.loadGlobalInventory(); 
-            },
+        <div class="flex gap-2">
+          <input id="sku-input" autocomplete="off" autocapitalize="characters" spellcheck="false"
+            class="min-w-0 flex-1 h-14 rounded-xl border-2 border-slate-200 px-3 text-center text-xl font-black font-mono uppercase outline-none focus:border-emerald-600 bg-white"
+            placeholder="SKU">
+          <button id="scan-button" type="button" class="w-16 h-14 rounded-xl bg-slate-900 text-white grid place-items-center active:scale-95" aria-label="Escanear código">
+            <i data-lucide="scan-line" class="w-7 h-7"></i>
+          </button>
+        </div>
 
-            // --- AYUDANTE DE IMAGENES (SOLUCIÓN A FOTOS ROTAS) ---
-            getEmbedLink(link) {
-                if (!link) return null;
-                // Si ya es un blob o base64, devolverlo tal cual
-                if (link.startsWith('data:') || link.startsWith('blob:')) return link;
-                
-                // Extraer ID de archivo de Drive
-                let id = null;
-                const patterns = [
-                    /id=([a-zA-Z0-9_-]{25,})/,
-                    /\/d\/([a-zA-Z0-9_-]{25,})\//,
-                    /open\?id=([a-zA-Z0-9_-]{25,})/
-                ];
-                
-                for (let p of patterns) {
-                    const match = link.match(p);
-                    if (match && match[1]) {
-                        id = match[1];
-                        break;
-                    }
-                }
-                
-                if (id) {
-                    // Usar el link de thumbnail de Google que es mucho más rápido y seguro para <img> tags
-                    return `https://drive.google.com/thumbnail?id=${id}&sz=w800`; // sz=w800 pide ancho 800px
-                }
-                
-                return link; // Si no es de drive, devolver original
-            },
+        <button id="search-button" type="button" class="mt-3 w-full h-14 rounded-xl bg-emerald-600 text-white text-lg font-black flex items-center justify-center gap-2 shadow-md active:scale-[.99] disabled:opacity-60">
+          <i data-lucide="arrow-right-circle" class="w-6 h-6"></i>
+          <span>Continuar</span>
+        </button>
+      </div>
 
-            async loadGlobalInventory() {
-                const listContainer = document.getElementById('inventory-list');
-                const loader = document.getElementById('inventory-loader');
-                
-                if(listContainer.children.length === 0) loader.classList.remove('hidden');
+      <section class="grid grid-cols-3 gap-2 mb-4">
+        <div class="rounded-xl bg-white border border-slate-200 p-3 text-center">
+          <p class="text-[11px] font-black uppercase text-slate-500">Productos</p>
+          <p id="stat-products" class="text-2xl font-black">0</p>
+        </div>
+        <div class="rounded-xl bg-white border border-slate-200 p-3 text-center">
+          <p class="text-[11px] font-black uppercase text-slate-500">Piezas</p>
+          <p id="stat-stock" class="text-2xl font-black text-emerald-700">0</p>
+        </div>
+        <div class="rounded-xl bg-white border border-slate-200 p-3 text-center">
+          <p class="text-[11px] font-black uppercase text-slate-500">Agotados</p>
+          <p id="stat-empty" class="text-2xl font-black text-red-600">0</p>
+        </div>
+      </section>
 
-                try {
-                    const response = await fetch(`${this.state.url}?action=getAll`, {
-                        method: 'GET',
-                        redirect: 'follow'
-                    });
+      <section class="mb-3">
+        <div class="flex items-center gap-2 mb-2">
+          <div class="relative flex-1">
+            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"></i>
+            <input id="filter-input" autocomplete="off" class="w-full h-12 rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-base outline-none focus:border-emerald-600" placeholder="Buscar en inventario">
+          </div>
+          <button id="refresh-button" type="button" class="w-12 h-12 rounded-xl bg-white border border-slate-200 grid place-items-center active:scale-95" aria-label="Actualizar inventario">
+            <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+          </button>
+        </div>
+        <p id="inventory-hint" class="text-xs text-slate-500 px-1"></p>
+      </section>
 
-                    if (!response.ok) throw new Error("Status " + response.status);
+      <div id="loading-state" class="hidden py-10 text-center">
+        <div class="loader loader-dark mx-auto mb-3"></div>
+        <p class="text-sm text-slate-500">Actualizando inventario...</p>
+      </div>
 
-                    const json = await response.json();
-                    loader.classList.add('hidden');
-                    
-                    if (json.status === 'success') {
-                        this.renderInventoryList(json.data);
-                    } else {
-                        throw new Error("API devolvió error");
-                    }
-                } catch (e) {
-                    console.warn("Fallo al conectar:", e.message);
-                    loader.classList.add('hidden');
-                    
-                    listContainer.innerHTML = `
-                        <div class="text-center p-6 bg-red-50 rounded-lg border border-red-100">
-                            <i data-lucide="wifi-off" class="w-8 h-8 text-red-400 mx-auto mb-2"></i>
-                            <p class="text-sm text-red-600 font-bold">Sin conexión</p>
-                            <button onclick="app.showConfig()" class="text-xs text-red-500 underline mt-2">Revisar URL</button>
-                        </div>
-                    `;
-                    lucide.createIcons();
-                }
-            },
+      <div id="inventory-list" class="grid gap-2 md:grid-cols-2"></div>
+    </section>
 
-            renderInventoryList(products) {
-                const list = document.getElementById('inventory-list');
-                list.innerHTML = ''; 
+    <section id="editor-section" class="hidden fade-in">
+      <div class="rounded-2xl bg-white border border-slate-200 shadow-md p-4 sm:p-5">
+        <div class="flex items-start gap-3 mb-4">
+          <button id="back-button" type="button" class="w-12 h-12 rounded-full bg-slate-100 grid place-items-center shrink-0 active:scale-95" aria-label="Regresar">
+            <i data-lucide="arrow-left" class="w-6 h-6"></i>
+          </button>
+          <div class="min-w-0 pt-1">
+            <h2 id="editor-title" class="font-black text-2xl leading-tight">Nuevo producto</h2>
+            <p id="editor-subtitle" class="text-sm text-slate-500 font-mono mt-1"></p>
+          </div>
+        </div>
 
-                if (products.length === 0) {
-                    list.innerHTML = '<div class="text-center text-gray-400 text-xs py-4">Inventario vacío</div>';
-                    return;
-                }
+        <div class="grid gap-5 lg:grid-cols-[320px_1fr]">
+          <div>
+            <div id="photo-wrap" class="hidden relative rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden">
+              <img id="photo-preview" class="w-full aspect-square object-contain bg-white" alt="Foto del producto">
+              <button id="clear-photo" type="button" class="absolute top-3 right-3 w-12 h-12 rounded-full bg-red-600 text-white grid place-items-center shadow-lg active:scale-95" aria-label="Quitar foto">
+                <i data-lucide="trash-2" class="w-6 h-6"></i>
+              </button>
+            </div>
 
-                products.forEach(p => {
-                    const div = document.createElement('div');
-                    div.className = "bg-white p-3 rounded-lg border border-gray-100 flex gap-3 items-center shadow-sm hover:shadow-md transition active:scale-[0.98]";
-                    div.onclick = () => {
-                        document.getElementById('search-sku').value = p.sku;
-                        this.checkSku();
-                    };
-                    
-                    // Usar helper de imagen
-                    const safeImg = this.getEmbedLink(p.image);
-                    let imgHtml = `<div class="w-full h-full flex items-center justify-center text-gray-300 bg-gray-100"><i data-lucide="image" class="w-4 h-4"></i></div>`;
-                    
-                    if (safeImg) {
-                         imgHtml = `<img src="${safeImg}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\\'w-full h-full flex items-center justify-center text-gray-300 bg-gray-100\\'><i data-lucide=\\'image-off\\' class=\\'w-4 h-4\\'></i></div>'; lucide.createIcons();">`;
-                    }
+            <button id="photo-button" type="button" class="w-full aspect-[4/3] rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 text-slate-600 grid place-items-center active:bg-slate-100">
+              <span class="flex flex-col items-center gap-2 font-black text-lg">
+                <i data-lucide="camera" class="w-10 h-10"></i>
+                Tomar foto
+                <small class="font-medium text-sm text-slate-400">La foto se optimiza automáticamente</small>
+              </span>
+            </button>
+          </div>
 
-                    div.innerHTML = `
-                        <div class="w-12 h-12 rounded-md overflow-hidden shrink-0 border border-gray-200 relative">
-                            ${imgHtml}
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <h4 class="font-bold text-gray-800 text-sm truncate">${p.name}</h4>
-                            <div class="flex items-center gap-2 text-xs text-gray-500">
-                                <span class="bg-gray-100 px-1.5 py-0.5 rounded font-mono text-[10px]">${p.sku}</span>
-                                <span class="text-green-600 font-bold">$${p.price}</span>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <span class="block text-lg font-bold text-blue-600 leading-none">${p.stock}</span>
-                            <span class="text-[10px] text-gray-400">stock</span>
-                        </div>
-                    `;
-                    list.appendChild(div);
-                });
-                lucide.createIcons();
-            },
+          <div class="space-y-4">
+            <div>
+              <label class="text-sm font-black text-slate-600">Código SKU</label>
+              <input id="form-sku" class="mt-1 w-full h-14 rounded-xl border-2 border-slate-200 px-3 text-lg font-mono font-black uppercase outline-none focus:border-emerald-600 disabled:bg-slate-100 disabled:text-slate-500">
+            </div>
 
-            showView(id) {
-                ['view-search', 'view-existing', 'view-new', 'view-config'].forEach(v => document.getElementById(v).classList.add('hidden'));
-                document.getElementById(id).classList.remove('hidden');
-                lucide.createIcons();
-            },
+            <div>
+              <label class="text-sm font-black text-slate-600">Nombre del producto</label>
+              <input id="form-name" autocomplete="off" class="mt-1 w-full h-14 rounded-xl border-2 border-slate-200 px-3 text-lg outline-none focus:border-emerald-600" placeholder="Ej. Sartén Carbon Pro">
+            </div>
 
-            showConfig() {
-                document.getElementById('inp-script-url').value = this.state.url;
-                this.showView('view-config');
-            },
+            <div>
+              <label class="text-sm font-black text-slate-600">Cantidad en existencia</label>
+              <div class="mt-1 grid grid-cols-[64px_1fr_64px] gap-2">
+                <button id="stock-minus" type="button" class="h-16 rounded-xl bg-slate-200 text-slate-800 grid place-items-center active:scale-95" aria-label="Restar una pieza">
+                  <i data-lucide="minus" class="w-8 h-8"></i>
+                </button>
+                <input id="form-stock" type="number" min="0" inputmode="numeric" class="h-16 rounded-xl border-2 border-slate-200 px-3 text-center text-3xl font-black outline-none focus:border-emerald-600">
+                <button id="stock-plus" type="button" class="h-16 rounded-xl bg-blue-600 text-white grid place-items-center active:scale-95" aria-label="Sumar una pieza">
+                  <i data-lucide="plus" class="w-8 h-8"></i>
+                </button>
+              </div>
+            </div>
 
-            saveConfig() {
-                const url = document.getElementById('inp-script-url').value.trim();
-                if (url.startsWith('https')) {
-                    this.state.url = url;
-                    localStorage.setItem('GOOGLE_SCRIPT_URL', url);
-                    this.notify('Guardado');
-                    this.resetToSearch();
-                } else {
-                    this.notify('URL inválida', 'error');
-                }
-            },
+            <div>
+              <label class="text-sm font-black text-slate-600">Precio de venta</label>
+              <div class="mt-1 relative">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-slate-400">$</span>
+                <input id="form-price" type="number" min="0" step="0.01" inputmode="decimal" class="w-full h-16 rounded-xl border-2 border-slate-200 pl-11 pr-3 text-2xl font-black outline-none focus:border-emerald-600" placeholder="0.00">
+              </div>
+            </div>
 
-            resetToSearch() {
-                this.state.currentSku = '';
-                this.state.currentPhoto = null;
-                this.state.existingData = null;
-                document.getElementById('search-sku').value = '';
-                document.getElementById('new-name').value = '';
-                document.getElementById('new-price').value = '';
-                document.getElementById('new-stock').value = '1';
-                document.getElementById('is-edit-mode').value = 'false';
-                this.updatePhotoUI();
-                this.showView('view-search');
-                this.loadGlobalInventory(); 
-            },
+            <button id="save-button" type="button" class="w-full h-16 rounded-xl bg-emerald-600 text-white text-xl font-black flex items-center justify-center gap-2 shadow-lg active:scale-[.99] disabled:opacity-60">
+              <i data-lucide="save" class="w-6 h-6"></i>
+              <span>Guardar producto</span>
+            </button>
 
-            async checkSku() {
-                const skuInput = document.getElementById('search-sku');
-                const sku = skuInput.value.trim().toUpperCase();
-                if (!sku) return this.notify('Ingresa un SKU', 'error');
-                
-                this.state.currentSku = sku;
-                const btn = document.getElementById('btn-search');
-                const originalText = btn.innerHTML;
-                
-                btn.disabled = true;
-                btn.innerHTML = '<div class="loader"></div>';
+            <div id="existing-actions" class="hidden grid grid-cols-2 gap-2 pt-1">
+              <button id="add-one-button" type="button" class="h-14 rounded-xl bg-blue-600 text-white font-black flex items-center justify-center gap-2 disabled:opacity-60">
+                <i data-lucide="plus-circle" class="w-5 h-5"></i> Agregar 1
+              </button>
+              <button id="delete-button" type="button" class="h-14 rounded-xl bg-red-50 text-red-700 border border-red-200 font-black flex items-center justify-center gap-2 disabled:opacity-60">
+                <i data-lucide="trash-2" class="w-5 h-5"></i> Eliminar
+              </button>
+            </div>
 
-                try {
-                    const response = await fetch(`${this.state.url}?sku=${encodeURIComponent(sku)}`, {
-                        redirect: 'follow'
-                    });
-                    
-                    if (!response.ok) throw new Error("Error HTTP");
-                    const json = await response.json();
+            <p id="save-help" class="text-center text-xs text-slate-400">Al guardar podrás registrar inmediatamente el siguiente producto.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
 
-                    if (json.exists) {
-                        this.state.existingData = json.data; 
-                        this.renderExisting(json.data);
-                    } else {
-                        this.renderNew(); // Modo Nuevo
-                    }
-                } catch (e) {
-                    console.warn(e);
-                    this.notify('Error de conexión', 'error');
-                } finally {
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                }
-            },
+  <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/45 p-4 items-center justify-center">
+    <section class="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="font-black text-xl">Configuración</h2>
+          <p class="text-sm text-slate-500">Normalmente no necesitas cambiar esto.</p>
+        </div>
+        <button id="close-settings" type="button" class="w-11 h-11 rounded-full bg-slate-100 grid place-items-center">
+          <i data-lucide="x" class="w-6 h-6"></i>
+        </button>
+      </div>
+      <label class="text-sm font-black text-slate-600">URL de Google Apps Script</label>
+      <input id="api-url-input" class="mt-1 w-full rounded-xl border-2 border-slate-200 p-3 text-xs font-mono outline-none focus:border-emerald-600">
+      <button id="save-settings" type="button" class="mt-4 w-full h-14 rounded-xl bg-emerald-600 text-white font-black text-lg">Guardar configuración</button>
+    </section>
+  </div>
 
-            renderExisting(data) {
-                document.getElementById('exist-name').textContent = data.name;
-                document.getElementById('exist-sku-display').textContent = 'SKU: ' + data.sku;
-                document.getElementById('exist-price').textContent = '$' + data.price;
-                document.getElementById('exist-stock-current').textContent = data.stock;
-                
-                const img = document.getElementById('exist-img');
-                const fallback = document.getElementById('exist-fallback');
-                
-                // Usar helper de imagen
-                const safeImg = this.getEmbedLink(data.image);
+  <div id="camera-modal" class="hidden fixed inset-0 z-[60] bg-black flex-col">
+    <div class="relative flex-1 min-h-0">
+      <video id="camera-video" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
+      <div id="qr-reader" class="absolute inset-0 hidden"></div>
+      <div id="camera-label" class="absolute top-4 left-4 right-20 rounded-xl bg-black/45 backdrop-blur px-4 py-3 text-white font-bold text-center">Apunta al código</div>
+      <button id="close-camera" type="button" class="absolute top-4 right-4 w-12 h-12 rounded-full bg-white/20 text-white grid place-items-center backdrop-blur" aria-label="Cerrar cámara">
+        <i data-lucide="x" class="w-7 h-7"></i>
+      </button>
+    </div>
+    <div id="photo-controls" class="hidden h-28 bg-black items-center justify-center safe-bottom">
+      <button id="capture-button" type="button" class="w-20 h-20 rounded-full bg-white border-[6px] border-slate-400"></button>
+    </div>
+  </div>
 
-                if (safeImg) {
-                    img.src = safeImg;
-                    img.style.display = 'block';
-                    img.classList.remove('hidden');
-                    fallback.style.display = 'none';
-                } else {
-                    img.style.display = 'none';
-                    img.classList.add('hidden');
-                    fallback.style.display = 'flex';
-                }
-                this.showView('view-existing');
-            },
+  <div id="toast" role="status" class="hidden fixed top-24 left-1/2 -translate-x-1/2 z-[80] w-[calc(100%-2rem)] max-w-md rounded-2xl px-5 py-4 text-base font-black text-white shadow-2xl text-center"></div>
+  <canvas id="photo-canvas" class="hidden"></canvas>
 
-            // --- MODO NUEVO / EDITAR ---
-            renderNew() {
-                // Modo registro nuevo normal
-                document.getElementById('form-title').innerText = "Nuevo Producto";
-                document.getElementById('new-sku-display').textContent = this.state.currentSku;
-                document.getElementById('lbl-stock').innerText = "Stock Inicial";
-                document.getElementById('is-edit-mode').value = 'false';
-                
-                // Limpiar campos
-                document.getElementById('new-name').value = '';
-                document.getElementById('new-price').value = '';
-                document.getElementById('new-stock').value = '1';
-                this.clearPhoto();
-                
-                this.showView('view-new');
-            },
+<script>
+(() => {
+  'use strict';
 
-            editProduct() {
-                const data = this.state.existingData;
-                if(!data) return;
+  const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbwczNs-lS1aUyJxpvSMuYGekx9zSHxNwWONxw3PdkLhTIbG3D6LqE7SLx4mgl-SwGV5/exec';
+  const API_URL_KEY = 'productos_better_api_url_v3';
+  const CACHE_KEY = 'productos_better_inventory_cache_v3';
+  const CACHE_TIME_KEY = 'productos_better_inventory_cache_time_v3';
+  const REQUEST_TIMEOUT = 18000;
+  const MAX_RENDER = 60;
 
-                // Preparar modo edición
-                document.getElementById('form-title').innerText = "Editar Producto";
-                document.getElementById('new-sku-display').textContent = data.sku;
-                document.getElementById('lbl-stock').innerText = "Stock Total (Sobrescribir)";
-                document.getElementById('is-edit-mode').value = 'true';
+  const state = {
+    apiUrl: localStorage.getItem(API_URL_KEY) || DEFAULT_API_URL,
+    products: [],
+    mode: 'create',
+    currentProduct: null,
+    currentPhoto: null,
+    currentPhotoIsNew: false,
+    removeImage: false,
+    stream: null,
+    qr: null,
+    busy: false,
+    lastSync: null
+  };
 
-                // Rellenar datos
-                document.getElementById('new-name').value = data.name;
-                document.getElementById('new-price').value = data.price;
-                document.getElementById('new-stock').value = data.stock;
-                
-                // Foto actual
-                const safeImg = this.getEmbedLink(data.image);
-                if(safeImg) {
-                   this.state.currentPhoto = safeImg; // Usamos el link como "foto actual"
-                   document.getElementById('new-photo-preview').src = safeImg;
-                   document.getElementById('new-photo-preview-container').classList.remove('hidden');
-                   document.getElementById('btn-take-photo').classList.add('hidden');
-                } else {
-                   this.clearPhoto();
-                }
+  const $ = id => document.getElementById(id);
 
-                this.showView('view-new');
-            },
+  document.addEventListener('DOMContentLoaded', init);
 
-            // --- ELIMINAR ---
-            async deleteProduct() {
-                const sku = this.state.existingData.sku;
-                const name = this.state.existingData.name;
-                
-                // Doble confirmación (Simple y segura)
-                if(confirm(`¿Estás seguro de ELIMINAR "${name}"?\nEsta acción no se puede deshacer.`)) {
-                    if(confirm(`CONFIRMACIÓN FINAL:\n¿Borrar definitivamente el producto SKU: ${sku}?`)) {
-                        
-                        const payload = { action: 'delete', sku: sku };
-                        await this.sendData(payload, 'Producto eliminado');
-                    }
-                }
-            },
+  function init() {
+    bindEvents();
+    $('api-url-input').value = state.apiUrl;
+    restoreCache();
+    renderInventory();
+    updateStatus();
+    refreshInventory(state.products.length === 0, true);
+    lucide.createIcons();
 
-            async quickAddOne() {
-                const payload = {
-                    action: 'add', // Acción implícita anterior
-                    sku: this.state.currentSku,
-                    stock: 1, 
-                    price: this.state.existingData.price,
-                    name: this.state.existingData.name,
-                    imageBase64: null 
-                };
-                await this.sendData(payload, `Stock +1`, 'btn-add-one');
-            },
+    window.addEventListener('online', () => {
+      updateStatus('Con conexión');
+      refreshInventory(false, true);
+    });
+    window.addEventListener('offline', () => updateStatus('Sin internet'));
+  }
 
-            async submitProductForm() {
-                const name = document.getElementById('new-name').value.trim();
-                const price = document.getElementById('new-price').value;
-                const stock = document.getElementById('new-stock').value;
-                const isEdit = document.getElementById('is-edit-mode').value === 'true';
+  function bindEvents() {
+    $('search-button').addEventListener('click', checkSku);
+    $('sku-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkSku(); });
+    $('scan-button').addEventListener('click', () => startCamera('scan'));
+    $('filter-input').addEventListener('input', renderInventory);
+    $('refresh-button').addEventListener('click', () => refreshInventory(true, false));
 
-                if (!name || !price) return this.notify('Faltan datos', 'error');
+    $('back-button').addEventListener('click', closeEditor);
+    $('photo-button').addEventListener('click', () => startCamera('photo'));
+    $('clear-photo').addEventListener('click', clearPhoto);
+    $('stock-minus').addEventListener('click', () => changeStock(-1));
+    $('stock-plus').addEventListener('click', () => changeStock(1));
+    $('save-button').addEventListener('click', saveProduct);
+    $('add-one-button').addEventListener('click', addOne);
+    $('delete-button').addEventListener('click', deleteProduct);
 
-                // Si estamos editando y la foto es una URL (no base64), no enviamos nada para mantener la anterior
-                let imageToSend = this.state.currentPhoto;
-                if (imageToSend && !imageToSend.startsWith('data:')) {
-                    imageToSend = null; // No enviar URL como base64
-                }
+    $('settings-button').addEventListener('click', openSettings);
+    $('close-settings').addEventListener('click', closeSettings);
+    $('save-settings').addEventListener('click', saveSettings);
 
-                const payload = {
-                    action: isEdit ? 'update' : 'create', // Flag para el backend
-                    sku: this.state.currentSku,
-                    name: name,
-                    price: price,
-                    stock: stock,
-                    imageBase64: imageToSend
-                };
-                
-                await this.sendData(payload, isEdit ? 'Actualizado' : 'Registrado', 'btn-create');
-            },
+    $('close-camera').addEventListener('click', stopCamera);
+    $('capture-button').addEventListener('click', capturePhoto);
+  }
 
-            async sendData(payload, successMessage, btnId) {
-                const btn = document.getElementById(btnId);
-                const originalHTML = btn ? btn.innerHTML : '';
-                if(btn) { btn.disabled = true; btn.innerText = 'Procesando...'; }
+  function restoreCache() {
+    try {
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
+      if (Array.isArray(cached)) state.products = cached.map(normalizeProduct).filter(p => p.sku);
+      const cacheTime = Number(localStorage.getItem(CACHE_TIME_KEY) || 0);
+      if (cacheTime) state.lastSync = new Date(cacheTime);
+    } catch (_) {
+      state.products = [];
+    }
+  }
 
-                try {
-                    // SE HA CAMBIADO PARA FORZAR LECTURA DE RESPUESTA
-                    // Esto evita el "Falso Positivo" de éxito.
-                    const response = await fetch(this.state.url, {
-                        method: 'POST',
-                        redirect: 'follow', // IMPORTANTE para recibir respuesta de GAS
-                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                        body: JSON.stringify(payload)
-                    });
+  function saveCache() {
+    try {
+      const lightweight = state.products.map(p => ({
+        sku: p.sku, name: p.name, stock: p.stock, price: p.price, image: p.image
+      }));
+      localStorage.setItem(CACHE_KEY, JSON.stringify(lightweight));
+      localStorage.setItem(CACHE_TIME_KEY, String(Date.now()));
+    } catch (_) {}
+  }
 
-                    const json = await response.json();
+  async function refreshInventory(showLoader = false, silent = false) {
+    if (showLoader) $('loading-state').classList.remove('hidden');
+    if (!silent) setBusy($('refresh-button'), true, '');
 
-                    if (json.status === 'success' || json.status === 'deleted' || json.status === 'updated') {
-                        this.notify(successMessage, 'success');
-                        this.resetToSearch();
-                    } else if (json.status === 'not_found') {
-                         this.notify('Error: Producto no encontrado en la hoja', 'error');
-                    } else {
-                         throw new Error(json.error || 'Error desconocido del servidor');
-                    }
+    try {
+      const json = await getJson(`${state.apiUrl}?action=getAll&limit=1000`, REQUEST_TIMEOUT);
+      if (json.status !== 'success' || !Array.isArray(json.data)) {
+        throw new Error(json.error || 'La lista de productos no llegó correctamente');
+      }
 
-                } catch (e) {
-                    console.error(e);
-                    this.notify('Error: No se pudo confirmar la acción', 'error');
-                } finally {
-                    if(btn) { btn.disabled = false; btn.innerHTML = originalHTML; }
-                }
-            },
+      state.products = json.data.map(normalizeProduct).filter(p => p.sku);
+      state.lastSync = new Date();
+      saveCache();
+      renderInventory();
+      updateStatus();
+    } catch (error) {
+      console.error('refreshInventory:', error);
+      updateStatus(navigator.onLine ? 'No se pudo actualizar' : 'Sin internet');
+      if (!silent && state.products.length === 0) toast(friendlyError(error, 'No se pudo cargar el inventario'), 'error');
+    } finally {
+      $('loading-state').classList.add('hidden');
+      if (!silent) setBusy($('refresh-button'), false);
+    }
+  }
 
-            async startCamera(mode) {
-                const modal = document.getElementById('camera-modal');
-                const video = document.getElementById('camera-video');
-                const readerDiv = document.getElementById('reader');
-                const controls = document.getElementById('photo-controls');
+  function renderInventory() {
+    const terms = normalizeText($('filter-input').value).split(/\s+/).filter(Boolean);
+    const filtered = state.products.filter(product => {
+      const haystack = normalizeText(`${product.name} ${product.sku}`);
+      return terms.every(term => haystack.includes(term));
+    });
 
-                modal.classList.remove('hidden');
+    renderStats();
+    const list = $('inventory-list');
+    list.innerHTML = '';
 
-                if (mode === 'scanner') {
-                    video.classList.add('hidden');
-                    controls.classList.add('hidden');
-                    readerDiv.classList.remove('hidden');
-                    this.html5QrCode = new Html5Qrcode("reader");
-                    try {
-                        await this.html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
-                            (text) => {
-                                document.getElementById('search-sku').value = text;
-                                this.notify('Código detectado');
-                                this.stopCamera();
-                                this.checkSku(); 
-                            }, () => {});
-                    } catch (e) { this.stopCamera(); }
-                } else {
-                    readerDiv.classList.add('hidden');
-                    video.classList.remove('hidden');
-                    controls.classList.remove('hidden');
-                    try {
-                        const constraints = { video: { facingMode: 'environment', width: { ideal: 4096 }, height: { ideal: 2160 } } };
-                        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                        this.state.stream = stream;
-                        video.srcObject = stream;
-                    } catch (e) { this.stopCamera(); this.notify("Error al abrir cámara", "error"); }
-                }
-            },
+    const visible = filtered.slice(0, MAX_RENDER);
+    $('inventory-hint').textContent = filtered.length > MAX_RENDER
+      ? `Mostrando ${MAX_RENDER} de ${filtered.length}. Escribe para encontrar uno específico.`
+      : `${filtered.length} producto${filtered.length === 1 ? '' : 's'}`;
 
-            stopCamera() {
-                document.getElementById('camera-modal').classList.add('hidden');
-                if (this.state.stream) this.state.stream.getTracks().forEach(t => t.stop());
-                if (this.html5QrCode) this.html5QrCode.stop().then(() => this.html5QrCode.clear()).catch(console.error);
-            },
+    if (visible.length === 0) {
+      list.innerHTML = '<div class="md:col-span-2 rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500">No hay productos para mostrar.</div>';
+      return;
+    }
 
-            capturePhoto() {
-                const video = document.getElementById('camera-video');
-                const canvas = document.getElementById('photo-canvas');
-                
-                if (video.videoWidth > 0 && video.videoHeight > 0) {
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    this.state.currentPhoto = canvas.toDataURL('image/jpeg', 1.0);
-                    this.stopCamera();
-                    this.updatePhotoUI();
-                } else {
-                    this.notify("Cargando cámara...", "error");
-                    setTimeout(() => this.capturePhoto(), 500);
-                }
-            },
+    const fragment = document.createDocumentFragment();
+    visible.forEach(product => fragment.appendChild(inventoryCard(product)));
+    list.appendChild(fragment);
+    lucide.createIcons();
+  }
 
-            updatePhotoUI() {
-                const container = document.getElementById('new-photo-preview-container');
-                const btn = document.getElementById('btn-take-photo');
-                if (this.state.currentPhoto) {
-                    document.getElementById('new-photo-preview').src = this.state.currentPhoto;
-                    container.classList.remove('hidden');
-                    btn.classList.add('hidden');
-                } else {
-                    container.classList.add('hidden');
-                    btn.classList.remove('hidden');
-                }
-            },
+  function inventoryCard(product) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'w-full rounded-2xl bg-white border border-slate-200 p-3 shadow-sm text-left flex items-center gap-3 active:scale-[.99]';
+    card.addEventListener('click', () => openEditor('update', product));
 
-            clearPhoto() { this.state.currentPhoto = null; this.updatePhotoUI(); },
-            
-            notify(msg, type = 'success') {
-                const el = document.getElementById('notification');
-                el.textContent = msg;
-                el.className = `fixed top-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-50 text-white font-medium text-sm transition-all duration-300 text-center ${type === 'error' ? 'bg-red-600' : 'bg-green-600'}`;
-                el.classList.remove('hidden');
-                setTimeout(() => el.classList.add('hidden'), 3000);
-            }
-        };
+    const imgBox = document.createElement('div');
+    imgBox.className = 'w-16 h-16 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden grid place-items-center shrink-0';
+    if (product.imageSafe) {
+      const img = document.createElement('img');
+      img.src = product.imageSafe;
+      img.alt = product.name;
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      img.className = 'w-full h-full object-contain';
+      img.onerror = () => img.replaceWith(imagePlaceholder());
+      imgBox.appendChild(img);
+    } else {
+      imgBox.appendChild(imagePlaceholder());
+    }
 
-        document.addEventListener('DOMContentLoaded', () => app.init());
-    </script>
+    const info = document.createElement('div');
+    info.className = 'min-w-0 flex-1';
+    info.innerHTML = `
+      <h3 class="font-black text-base leading-snug line-clamp-2">${escapeHtml(product.name || 'Sin nombre')}</h3>
+      <p class="font-mono text-xs text-slate-500 mt-1">${escapeHtml(product.sku)}</p>
+      <p class="font-black text-emerald-700 text-base">${formatPrice(product.price)}</p>
+    `;
+
+    const stock = document.createElement('div');
+    stock.className = 'text-center shrink-0 min-w-12';
+    stock.innerHTML = `<p class="text-3xl font-black ${product.stock <= 0 ? 'text-red-600' : 'text-blue-700'}">${safeInt(product.stock)}</p><p class="text-[10px] font-black uppercase text-slate-400">piezas</p>`;
+
+    card.append(imgBox, info, stock);
+    return card;
+  }
+
+  async function checkSku() {
+    if (state.busy) return;
+    const sku = normalizeSku($('sku-input').value);
+    if (!sku) return toast('Escribe o escanea el código del producto', 'error');
+
+    const cached = state.products.find(p => p.sku === sku);
+    if (cached) {
+      openEditor('update', cached);
+      return;
+    }
+
+    setBusy($('search-button'), true, 'Buscando...');
+    try {
+      const result = await fetchProduct(sku);
+      if (result.exists) {
+        const product = normalizeProduct(result.data);
+        upsertLocal(product);
+        openEditor('update', product);
+      } else {
+        openEditor('create', emptyProduct(sku));
+      }
+    } catch (error) {
+      console.error('checkSku:', error);
+      if (navigator.onLine) {
+        toast('No se pudo consultar. Puedes intentar otra vez.', 'error');
+      } else {
+        toast('No hay internet para consultar un producto nuevo', 'error');
+      }
+    } finally {
+      setBusy($('search-button'), false);
+    }
+  }
+
+  function openEditor(mode, product) {
+    state.mode = mode;
+    state.currentProduct = normalizeProduct(product);
+    state.currentPhoto = null;
+    state.currentPhotoIsNew = false;
+    state.removeImage = false;
+
+    $('home-section').classList.add('hidden');
+    $('editor-section').classList.remove('hidden');
+    $('editor-title').textContent = mode === 'create' ? 'Nuevo producto' : 'Producto registrado';
+    $('editor-subtitle').textContent = `SKU ${state.currentProduct.sku}`;
+    $('form-sku').value = state.currentProduct.sku;
+    $('form-sku').disabled = mode === 'update';
+    $('form-name').value = state.currentProduct.name || '';
+    $('form-stock').value = safeInt(state.currentProduct.stock || (mode === 'create' ? 1 : 0));
+    $('form-price').value = Number(state.currentProduct.price || 0) || '';
+    $('existing-actions').classList.toggle('hidden', mode !== 'update');
+
+    if (state.currentProduct.imageSafe) showPhoto(state.currentProduct.imageSafe);
+    else resetPhotoUI();
+
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    lucide.createIcons();
+    setTimeout(() => {
+      if (mode === 'create' && !$('form-name').value) $('form-name').focus({ preventScroll: true });
+    }, 100);
+  }
+
+  function closeEditor() {
+    stopCamera();
+    state.currentProduct = null;
+    state.currentPhoto = null;
+    state.currentPhotoIsNew = false;
+    state.removeImage = false;
+    $('editor-section').classList.add('hidden');
+    $('home-section').classList.remove('hidden');
+    $('sku-input').value = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => $('sku-input').focus({ preventScroll: true }), 150);
+  }
+
+  function changeStock(delta) {
+    const current = safeInt($('form-stock').value);
+    $('form-stock').value = Math.max(0, current + delta);
+  }
+
+  async function saveProduct() {
+    if (state.busy) return;
+
+    const sku = normalizeSku($('form-sku').value);
+    const name = $('form-name').value.trim();
+    const stock = Number.parseInt($('form-stock').value, 10);
+    const price = Number($('form-price').value);
+
+    if (!sku) return toast('Falta el código SKU', 'error');
+    if (!name) return toast('Escribe el nombre del producto', 'error');
+    if (!Number.isInteger(stock) || stock < 0) return toast('La cantidad no es válida', 'error');
+    if (!Number.isFinite(price) || price < 0) return toast('El precio no es válido', 'error');
+
+    const action = state.mode === 'create' ? 'create' : 'update';
+    const payload = {
+      action,
+      sku,
+      name,
+      stock,
+      price,
+      imageBase64: state.currentPhotoIsNew ? state.currentPhoto : null,
+      removeImage: state.removeImage
+    };
+
+    const expected = { action, sku, name, stock, price };
+    setBusy($('save-button'), true, 'Guardando...');
+
+    try {
+      const result = await postWithVerification(payload, expected);
+      const serverProduct = result.data && typeof result.data === 'object' ? normalizeProduct(result.data) : null;
+      const previousImage = state.currentProduct?.image || '';
+      const localProduct = serverProduct || normalizeProduct({
+        sku, name, stock, price,
+        image: state.removeImage ? '' : (previousImage || '')
+      });
+
+      upsertLocal(localProduct);
+      saveCache();
+      renderInventory();
+      toast(state.mode === 'create' ? 'Producto guardado correctamente' : 'Cambios guardados', 'success');
+      closeEditor();
+      setTimeout(() => refreshInventory(false, true), 900);
+    } catch (error) {
+      console.error('saveProduct:', error);
+      toast(friendlyError(error, 'No se pudo guardar. Intenta nuevamente.'), 'error');
+    } finally {
+      setBusy($('save-button'), false);
+    }
+  }
+
+  async function addOne() {
+    if (state.busy || !state.currentProduct) return;
+    const sku = state.currentProduct.sku;
+    const before = safeInt($('form-stock').value);
+    const expectedStock = before + 1;
+
+    setBusy($('add-one-button'), true, 'Sumando...');
+    try {
+      const result = await postWithVerification(
+        { action: 'add', sku, stock: 1 },
+        { action: 'add', sku, minStock: expectedStock }
+      );
+
+      const found = state.products.find(p => p.sku === sku) || state.currentProduct;
+      const updated = result.data && typeof result.data === 'object'
+        ? normalizeProduct(result.data)
+        : normalizeProduct({ ...found, stock: expectedStock });
+
+      upsertLocal(updated);
+      saveCache();
+      renderInventory();
+      toast('Se agregó 1 pieza', 'success');
+      closeEditor();
+      setTimeout(() => refreshInventory(false, true), 700);
+    } catch (error) {
+      console.error('addOne:', error);
+      toast(friendlyError(error, 'No se pudo sumar la pieza'), 'error');
+    } finally {
+      setBusy($('add-one-button'), false);
+    }
+  }
+
+  async function deleteProduct() {
+    if (state.busy || !state.currentProduct) return;
+    const sku = state.currentProduct.sku;
+    const name = $('form-name').value.trim() || state.currentProduct.name;
+    if (!confirm(`¿Eliminar ${name}?\n\nEsta acción no se puede deshacer.`)) return;
+
+    setBusy($('delete-button'), true, 'Eliminando...');
+    try {
+      await postWithVerification({ action: 'delete', sku }, { action: 'delete', sku });
+      state.products = state.products.filter(p => p.sku !== sku);
+      saveCache();
+      renderInventory();
+      toast('Producto eliminado', 'success');
+      closeEditor();
+      setTimeout(() => refreshInventory(false, true), 700);
+    } catch (error) {
+      console.error('deleteProduct:', error);
+      toast(friendlyError(error, 'No se pudo eliminar'), 'error');
+    } finally {
+      setBusy($('delete-button'), false);
+    }
+  }
+
+  async function postWithVerification(payload, expected) {
+    let firstError = null;
+
+    try {
+      const result = await postJson(payload, REQUEST_TIMEOUT);
+      if (['success', 'updated', 'deleted'].includes(String(result.status || '').toLowerCase())) return result;
+      if (result.status === 'not_found') throw new Error('Producto no encontrado');
+      throw new Error(result.error || result.message || 'El servidor no confirmó la operación');
+    } catch (error) {
+      firstError = error;
+      console.warn('POST no confirmado, verificando resultado...', error);
+    }
+
+    // Google Apps Script a veces ejecuta la operación y la respuesta se pierde.
+    // Antes de mostrar error, consultamos el SKU para evitar duplicados.
+    await sleep(700);
+    try {
+      const verification = await fetchProduct(expected.sku, 9000);
+
+      if (expected.action === 'delete') {
+        if (!verification.exists) return { status: 'deleted', verified: true };
+      } else if (verification.exists && verification.data) {
+        const p = normalizeProduct(verification.data);
+        if (expected.action === 'add') {
+          if (p.stock >= expected.minStock) return { status: 'updated', data: p, verified: true };
+        } else {
+          const sameName = normalizeText(p.name) === normalizeText(expected.name);
+          const sameStock = safeInt(p.stock) === safeInt(expected.stock);
+          const samePrice = Math.abs(Number(p.price) - Number(expected.price)) < 0.011;
+          if (sameName && sameStock && samePrice) return { status: expected.action === 'create' ? 'success' : 'updated', data: p, verified: true };
+        }
+      }
+    } catch (verifyError) {
+      console.warn('No se pudo verificar:', verifyError);
+    }
+
+    throw firstError || new Error('No se pudo confirmar la operación');
+  }
+
+  async function fetchProduct(sku, timeout = REQUEST_TIMEOUT) {
+    const json = await getJson(`${state.apiUrl}?sku=${encodeURIComponent(sku)}&_=${Date.now()}`, timeout);
+    return {
+      exists: Boolean(json.exists),
+      data: json.data || null,
+      raw: json
+    };
+  }
+
+  async function getJson(url, timeout) {
+    const response = await fetchWithTimeout(url, { method: 'GET', redirect: 'follow', cache: 'no-store' }, timeout);
+    const text = await response.text();
+    if (!response.ok) throw new Error(`Error de servidor ${response.status}`);
+    return parseJsonResponse(text);
+  }
+
+  async function postJson(payload, timeout) {
+    const response = await fetchWithTimeout(state.apiUrl, {
+      method: 'POST',
+      redirect: 'follow',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    }, timeout);
+
+    const text = await response.text();
+    if (!response.ok) throw new Error(`Error de servidor ${response.status}`);
+    return parseJsonResponse(text);
+  }
+
+  function parseJsonResponse(text) {
+    const clean = String(text || '').trim();
+    if (!clean) throw new Error('El servidor respondió vacío');
+    try {
+      return JSON.parse(clean);
+    } catch (_) {
+      const start = clean.indexOf('{');
+      const end = clean.lastIndexOf('}');
+      if (start >= 0 && end > start) {
+        try { return JSON.parse(clean.slice(start, end + 1)); } catch (_) {}
+      }
+      console.error('Respuesta no JSON:', clean.slice(0, 500));
+      throw new Error('El servidor respondió en un formato incorrecto');
+    }
+  }
+
+  async function fetchWithTimeout(url, options, timeout) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } catch (error) {
+      if (error.name === 'AbortError') throw new Error('La conexión tardó demasiado');
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function startCamera(mode) {
+    if (state.busy) return;
+    $('camera-modal').classList.remove('hidden');
+    $('camera-modal').classList.add('flex');
+
+    if (mode === 'scan') {
+      $('camera-label').textContent = 'Apunta al código del producto';
+      $('camera-video').classList.add('hidden');
+      $('photo-controls').classList.add('hidden');
+      $('photo-controls').classList.remove('flex');
+      $('qr-reader').classList.remove('hidden');
+
+      if (!window.Html5Qrcode) {
+        toast('El escáner no cargó. Puedes escribir el SKU.', 'error');
+        stopCamera();
+        return;
+      }
+
+      try {
+        state.qr = new Html5Qrcode('qr-reader');
+        await state.qr.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 270, height: 170 }, aspectRatio: 1.3 },
+          text => {
+            $('sku-input').value = normalizeSku(text);
+            stopCamera();
+            setTimeout(checkSku, 100);
+          },
+          () => {}
+        );
+      } catch (error) {
+        console.error('scanner:', error);
+        toast('No se pudo abrir el escáner. Escribe el SKU.', 'error');
+        stopCamera();
+      }
+      return;
+    }
+
+    $('camera-label').textContent = 'Coloca el producto dentro de la pantalla';
+    $('qr-reader').classList.add('hidden');
+    $('camera-video').classList.remove('hidden');
+    $('photo-controls').classList.remove('hidden');
+    $('photo-controls').classList.add('flex');
+
+    try {
+      state.stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+      $('camera-video').srcObject = state.stream;
+    } catch (error) {
+      console.error('camera:', error);
+      toast('No se pudo abrir la cámara', 'error');
+      stopCamera();
+    }
+  }
+
+  function stopCamera() {
+    $('camera-modal').classList.add('hidden');
+    $('camera-modal').classList.remove('flex');
+
+    if (state.stream) {
+      state.stream.getTracks().forEach(track => track.stop());
+      state.stream = null;
+      $('camera-video').srcObject = null;
+    }
+
+    if (state.qr) {
+      const qr = state.qr;
+      state.qr = null;
+      Promise.resolve(qr.stop()).catch(() => {}).finally(() => {
+        try { qr.clear(); } catch (_) {}
+      });
+    }
+  }
+
+  function capturePhoto() {
+    const video = $('camera-video');
+    if (!video.videoWidth || !video.videoHeight) {
+      toast('Espera un momento, la cámara está cargando', 'error');
+      return;
+    }
+
+    const canvas = $('photo-canvas');
+    const maxSide = 1000;
+    const scale = Math.min(1, maxSide / Math.max(video.videoWidth, video.videoHeight));
+    canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+    canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+
+    const ctx = canvas.getContext('2d', { alpha: false });
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Calidad suficiente para catálogo y mucho más ligera para Apps Script.
+    state.currentPhoto = canvas.toDataURL('image/jpeg', 0.72);
+    state.currentPhotoIsNew = true;
+    state.removeImage = false;
+    showPhoto(state.currentPhoto);
+    stopCamera();
+  }
+
+  function showPhoto(src) {
+    $('photo-preview').src = src;
+    $('photo-wrap').classList.remove('hidden');
+    $('photo-button').classList.add('hidden');
+  }
+
+  function clearPhoto() {
+    state.currentPhoto = null;
+    state.currentPhotoIsNew = false;
+    state.removeImage = state.mode === 'update' && Boolean(state.currentProduct?.image);
+    resetPhotoUI();
+  }
+
+  function resetPhotoUI() {
+    $('photo-preview').src = '';
+    $('photo-wrap').classList.add('hidden');
+    $('photo-button').classList.remove('hidden');
+  }
+
+  function openSettings() {
+    $('api-url-input').value = state.apiUrl;
+    $('settings-modal').classList.remove('hidden');
+    $('settings-modal').classList.add('flex');
+  }
+
+  function closeSettings() {
+    $('settings-modal').classList.add('hidden');
+    $('settings-modal').classList.remove('flex');
+  }
+
+  function saveSettings() {
+    const url = $('api-url-input').value.trim();
+    if (!/^https:\/\/script\.google\.com\//i.test(url)) {
+      return toast('La URL de Apps Script no es válida', 'error');
+    }
+    state.apiUrl = url;
+    localStorage.setItem(API_URL_KEY, url);
+    closeSettings();
+    toast('Configuración guardada', 'success');
+    refreshInventory(true, false);
+  }
+
+  function upsertLocal(product) {
+    const normalized = normalizeProduct(product);
+    const index = state.products.findIndex(p => p.sku === normalized.sku);
+    if (index >= 0) state.products[index] = { ...state.products[index], ...normalized };
+    else state.products.unshift(normalized);
+  }
+
+  function renderStats() {
+    $('stat-products').textContent = state.products.length;
+    $('stat-stock').textContent = state.products.reduce((sum, p) => sum + Math.max(0, safeInt(p.stock)), 0);
+    $('stat-empty').textContent = state.products.filter(p => safeInt(p.stock) <= 0).length;
+  }
+
+  function updateStatus(custom) {
+    if (custom) {
+      $('status-label').textContent = custom;
+      return;
+    }
+    if (!navigator.onLine) {
+      $('status-label').textContent = 'Sin internet · mostrando datos guardados';
+      return;
+    }
+    if (state.lastSync) {
+      $('status-label').textContent = 'Actualizado ' + state.lastSync.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    } else {
+      $('status-label').textContent = 'Listo para registrar';
+    }
+  }
+
+  function normalizeProduct(product) {
+    const image = String(product?.image || '').trim();
+    return {
+      name: String(product?.name || '').trim(),
+      sku: normalizeSku(product?.sku),
+      stock: safeInt(product?.stock),
+      price: Number(product?.price || 0),
+      image,
+      imageSafe: imageUrl(image)
+    };
+  }
+
+  function emptyProduct(sku) {
+    return { sku: normalizeSku(sku), name: '', stock: 1, price: 0, image: '', imageSafe: '' };
+  }
+
+  function imageUrl(link) {
+    const value = String(link || '').trim();
+    if (!value) return '';
+    if (value.startsWith('data:') || value.startsWith('blob:')) return value;
+    const match = value.match(/[?&]id=([a-zA-Z0-9_-]{20,})/) || value.match(/\/d\/([a-zA-Z0-9_-]{20,})(?:\/|$)/);
+    if (match) return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w500`;
+    return value;
+  }
+
+  function imagePlaceholder() {
+    const div = document.createElement('div');
+    div.className = 'w-full h-full bg-slate-100 text-slate-300 grid place-items-center';
+    div.innerHTML = '<i data-lucide="image-off" class="w-7 h-7"></i>';
+    return div;
+  }
+
+  function setBusy(button, busy, label = '') {
+    if (!button) return;
+    if (busy) {
+      state.busy = true;
+      button.disabled = true;
+      if (!button.dataset.originalHtml) button.dataset.originalHtml = button.innerHTML;
+      if (label) button.innerHTML = `<div class="loader"></div><span>${escapeHtml(label)}</span>`;
+    } else {
+      state.busy = false;
+      button.disabled = false;
+      if (button.dataset.originalHtml) {
+        button.innerHTML = button.dataset.originalHtml;
+        delete button.dataset.originalHtml;
+      }
+    }
+    lucide.createIcons();
+  }
+
+  function friendlyError(error, fallback) {
+    const msg = String(error?.message || '').trim();
+    if (!msg) return fallback;
+    if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) return 'No se pudo conectar. Revisa el internet e intenta otra vez.';
+    if (/tardó demasiado/i.test(msg)) return 'La conexión está lenta. Intenta guardar otra vez.';
+    return msg;
+  }
+
+  function normalizeSku(value) {
+    return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+  }
+
+  function normalizeText(value) {
+    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  }
+
+  function safeInt(value) {
+    const n = Number.parseInt(value, 10);
+    return Number.isFinite(n) ? Math.max(0, n) : 0;
+  }
+
+  function formatPrice(value) {
+    return Number(value || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+  }
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, char => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+    }[char]));
+  }
+
+  function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+  function toast(message, type = 'success') {
+    const el = $('toast');
+    el.textContent = message;
+    el.className = `fixed top-24 left-1/2 -translate-x-1/2 z-[80] w-[calc(100%-2rem)] max-w-md rounded-2xl px-5 py-4 text-base font-black text-white shadow-2xl text-center ${type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`;
+    el.classList.remove('hidden');
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => el.classList.add('hidden'), type === 'error' ? 5000 : 2600);
+  }
+})();
+</script>
 </body>
 </html>
